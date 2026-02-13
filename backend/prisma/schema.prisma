@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  admin_id        Int       @id @default(autoincrement())
+  email           String    @unique @db.VarChar(100)
+  password_hash   String    @db.VarChar(255)
+  phone_number    String?   @db.VarChar(20)
+  user_type       String    @db.VarChar(20) // enum: 'patient', 'hospital'
+  created_at      DateTime  @default(now()) @db.Timestamp(0)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+  last_login      DateTime? @db.Timestamp(0)
+  account_status  String    @default("active") @db.VarChar(20) // enum: 'active', 'suspended', 'deleted'
+  email_verified  Boolean   @default(false) @db.TinyInt
+  
+  // Relations
+  patients          Patient[]
+
+@@index([email])
+@@index([user_type])
+  @@map("admin")
+}
+
+model Patient {
+  patient_id       Int              @id @default(autoincrement())
+  admin_id         Int
+  full_name        String           @db.VarChar(100)
+  address          String           @db.VarChar(255)
+  date_of_birth    DateTime?        @db.Date
+  gender           String?          @db.VarChar(10)
+  blood_type       String?          @db.VarChar(5)
+  height_cm        Float?           @db.Float
+  weight_kg        Float?           @db.Float
+  relationship     String           @db.VarChar(50) // self, child, parent, spouse, etc.
+  emergency_pin    String?          @db.VarChar(6) // hashed 6-digit PIN
+  is_primary       Boolean          @default(false) @db.TinyInt
+  created_at       DateTime         @default(now()) @db.Timestamp(0)
+  updated_at       DateTime         @default(now()) @updatedAt @db.Timestamp(0)
+
+  // Relations
+  admin            Admin              @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade)
+  medicalRecords   MedicalRecord[]
+  emergencyContacts EmergencyContact[]
+  emergencyAlerts  EmergencyAlert[]
+
+  @@index([admin_id])
+  @@index([is_primary])
+  @@map("patient")
+}
+
+model MedicalRecord {
+  record_id        Int      @id @default(autoincrement())
+  patient_id       Int
+  category      String   @db.VarChar(50) // prescription, lab_report, xray, scan, diagnosis, etc.
+  title            String   @db.VarChar(200)
+  description      String?  @db.Text
+  record_date      DateTime @db.Date
+  physician_name      String?  @db.VarChar(100)
+  physician_speciality String? @db.VarChar(100)
+  facility_name    String?  @db.VarChar(200)
+  file_path         String   @db.VarChar(500) // Cloudinary URL
+  file_type        String   @db.VarChar(50)
+  file_size_bytes        Int?     // in bytes
+  is_critical      Boolean  @default(false) @db.TinyInt
+  critical_data             String?  @db.Text // JSON array stored as text
+  created_at       DateTime @default(now()) @db.Timestamp(0)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
+
+  // Relations
+  patient          Patient  @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+
+  @@index([patient_id])
+  @@index([record_date])
+  @@index([is_critical])
+  @@map("medical_records")
+}
+
+model EmergencyContact {
+  contact_id   Int      @id @default(autoincrement())
+  patient_id   Int
+  contact_name         String   @db.VarChar(100)
+  relationship String   @db.VarChar(50)
+  phone_number String   @db.VarChar(15)
+  email        String?  @db.VarChar(100)
+  priority     Int      @default(1)
+  is_active    Boolean  @default(true) @db.TinyInt
+  created_at   DateTime @default(now()) @db.Timestamp(0)
+
+  // Relations
+  patient        Patient    @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+
+  @@index([patient_id])
+   @@index([is_active])
+  @@map("emergency_contact")
+}
+
+model EmergencyAlert {
+  alert_id             Int       @id @default(autoincrement())
+  patient_id           Int
+  hospital_id          Int?
+  patient_location     String?   @db.Text
+  critical_summary     String?   @db.Text
+  alert_message        String?   @db.Text
+  status               String    @db.VarChar(20) // enum: 'resolve', 'sent', 'acknowledge'
+  sent_to_hospital     Boolean   @default(false) @db.TinyInt
+  sent_to_contacts     Boolean   @default(false) @db.TinyInt
+  contact_ids_notified String?   @db.Text
+  sent_at              DateTime? @db.Timestamp(0)
+  acknowledged_at      DateTime? @db.Timestamp(0)
+  resolved_at          DateTime? @db.Timestamp(0)
+
+  // Relations
+  patient              Patient   @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  hospital             Hospital? @relation(fields: [hospital_id], references: [hospital_id], onDelete: SetNull)
+
+  @@index([patient_id])
+  @@index([hospital_id])
+  @@index([status])
+  @@index([sent_at])
+  @@map("emergency_alert")
+}
+
+model Hospital {
+  hospital_id     Int       @id @default(autoincrement())
+  admin_id        Int?
+  address         String    @db.Text
+  city            String    @db.VarChar(100)
+  state           String    @db.VarChar(100)
+  phone_number    String    @db.VarChar(15)
+  email           String?   @db.VarChar(100)
+  latitude        Float?    @db.Float
+  longitude       Float?    @db.Float
+  hospital_type   String    @db.VarChar(50) // enum: 'clinic', 'government', 'private', 'specialty'
+  rating          Float?    @db.Float
+  is_verified     Boolean   @default(false) @db.TinyInt
+  created_at      DateTime  @default(now()) @db.Timestamp(0)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+  hospital_name   String    @db.VarChar(200)
+
+  // Relations
+  emergencyAlerts EmergencyAlert[]
+
+  @@index([city])
+  @@index([hospital_type])
+  @@index([is_verified])
+  @@map("hospital")
+}

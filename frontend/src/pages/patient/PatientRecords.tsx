@@ -1,0 +1,343 @@
+import { useState } from "react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Link } from "react-router-dom";
+import {
+  Search,
+  Filter,
+  Plus,
+  FileText,
+  Download,
+  Share2,
+  Eye,
+  TestTube,
+  Activity,
+  Pill,
+  Stethoscope,
+  Image as ImageIcon,
+  MoreVertical,
+  FolderOpen,
+  Clock,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { usePatients } from "@/hooks/usePatients";
+import { useRecords } from "@/hooks/useRecords";
+import { format } from "date-fns";
+
+// Helper function to get icon based on record type
+const getRecordIcon = (recordType: string) => {
+  const type = recordType.toLowerCase();
+  if (type.includes('lab') || type.includes('test')) return TestTube;
+  if (type.includes('prescription') || type.includes('medication')) return Pill;
+  if (type.includes('cardio') || type.includes('heart')) return Activity;
+  if (type.includes('radiology') || type.includes('xray') || type.includes('scan')) return ImageIcon;
+  if (type.includes('general') || type.includes('checkup')) return Stethoscope;
+  return FileText;
+};
+
+// Helper function to format date
+const formatDate = (dateString: string) => {
+  try {
+    return format(new Date(dateString), "MMM d, yyyy");
+  } catch {
+    return dateString;
+  }
+};
+
+// Helper function to format file size
+const formatFileSize = (bytes?: number) => {
+  if (!bytes) return "N/A";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const categories = [
+  { value: "all", label: "All Categories" },
+  { value: "lab", label: "Lab Reports" },
+  { value: "prescription", label: "Prescriptions" },
+  { value: "radiology", label: "Radiology" },
+  { value: "cardiology", label: "Cardiology" },
+  { value: "general", label: "General" },
+];
+
+const getStatusBadge = (isCritical: boolean) => {
+  if (isCritical) {
+    return <Badge className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20">Critical</Badge>;
+  }
+  return <Badge className="bg-success/10 text-success border-success/20 hover:bg-success/20">Normal</Badge>;
+};
+
+export default function PatientRecords() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Fetch patients data
+  const { data: patients } = usePatients();
+
+  // Get primary patient ID
+  const primaryPatient = patients?.find(p => p.is_primary) || patients?.[0];
+  const patientId = primaryPatient?.patient_id;
+
+  // Fetch medical records
+  const { data: records, isLoading, error } = useRecords(patientId || 0);
+
+  // Filter records based on search and category
+  const filteredRecords = records?.filter((record) => {
+    const matchesSearch =
+      record.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (record.hospital_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (record.doctor_name?.toLowerCase() || "").includes(searchQuery.toLowerCase());
+
+    const matchesCategory =
+      selectedCategory === "all" ||
+      record.record_type.toLowerCase().includes(selectedCategory.toLowerCase());
+
+    return matchesSearch && matchesCategory;
+  }) || [];
+
+  // Calculate stats from real data
+  const stats = [
+    {
+      label: "Total Records",
+      value: records?.length || 0,
+      icon: FileText,
+      color: "text-primary"
+    },
+    {
+      label: "Lab Reports",
+      value: records?.filter(r => r.record_type.toLowerCase().includes("lab")).length || 0,
+      icon: TestTube,
+      color: "text-info"
+    },
+    {
+      label: "Prescriptions",
+      value: records?.filter(r => r.record_type.toLowerCase().includes("prescription")).length || 0,
+      icon: Pill,
+      color: "text-success"
+    },
+    {
+      label: "Recent Uploads",
+      value: records?.filter(r => {
+        const daysDiff = Math.floor((Date.now() - new Date(r.created_at).getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 7;
+      }).length || 0,
+      icon: Clock,
+      color: "text-warning"
+    },
+  ];
+
+  return (
+    <DashboardLayout userType="patient">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">My Records</h1>
+            <p className="text-muted-foreground">View and manage all your medical records.</p>
+          </div>
+          <Button asChild>
+            <Link to="/patient/upload">
+              <Plus className="mr-2 h-4 w-4" />
+              Upload Record
+            </Link>
+          </Button>
+        </div>
+
+        {/* Stats cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={stat.label} className="card-stat">
+                <div className="flex items-center gap-4">
+                  <div className={`icon-container ${stat.color}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* filters */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search records, hospitals, doctors..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Records table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              Medical Records
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                  <p className="text-muted-foreground">Loading records...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-4 text-destructive" />
+                  <p className="text-muted-foreground">{error.message || "Failed to load records"}</p>
+                </div>
+              </div>
+            ) : filteredRecords.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Record</TableHead>
+                    <TableHead className="hidden md:table-cell">Type</TableHead>
+                    <TableHead className="hidden lg:table-cell">Hospital</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRecords.map((record) => {
+                    const Icon = getRecordIcon(record.record_type);
+                    return (
+                      <TableRow key={record.record_id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="icon-container flex-shrink-0">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{record.title}</p>
+                              <p className="text-sm text-muted-foreground md:hidden">
+                                {record.record_type}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="outline">{record.record_type}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground">
+                          {record.hospital_name || "N/A"}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-muted-foreground">
+                          {formatDate(record.record_date)}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(record.is_critical)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+                              <Share2 className="h-4 w-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Share2 className="mr-2 h-4 w-4" />
+                                  Share
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No records found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchQuery || selectedCategory !== "all"
+                    ? "Try adjusting your search or filter to find what you're looking for."
+                    : "You haven't uploaded any medical records yet."}
+                </p>
+                <Button asChild>
+                  <Link to="/patient/upload">Upload Your First Record</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+}
