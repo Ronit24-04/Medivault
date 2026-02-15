@@ -1,4 +1,4 @@
-import { authService } from '@/api/services';
+import { authService, patientsService } from '@/api/services';
 import { useState, useEffect } from 'react';
 
 /**
@@ -22,11 +22,18 @@ export const usePatientId = () => {
                     return;
                 }
 
-                // For now, we'll use a placeholder patient ID
-                // In a real implementation, you would fetch the primary patient for this admin
-                // This could be done via a new API endpoint or stored in the user profile
-                setPatientId(1); // Placeholder - should be fetched from API
-                setError(null);
+                // Fetch all patients for this admin
+                const patients = await patientsService.getPatients();
+
+                if (!patients || patients.length === 0) {
+                    setError('No patients found');
+                    setPatientId(null);
+                } else {
+                    // Get the primary patient (is_primary = true) or the first patient
+                    const primaryPatient = patients.find(p => p.is_primary) || patients[0];
+                    setPatientId(primaryPatient.patient_id);
+                    setError(null);
+                }
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to get patient ID');
                 setPatientId(null);

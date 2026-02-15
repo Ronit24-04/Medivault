@@ -13,6 +13,7 @@ import patientsRoutes from './modules/patients/patients.routes';
 import recordsRoutes from './modules/medical-records/records.routes';
 import emergencyRoutes from './modules/emergency/emergency.routes';
 import hospitalsRoutes from './modules/hospitals/hospitals.routes';
+import sharedAccessRoutes from './modules/shared-access/shared-access.routes';
 
 const app: Application = express();
 
@@ -46,6 +47,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientsRoutes);
 app.use('/api/patients', recordsRoutes);
+app.use('/api/patients', sharedAccessRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/hospitals', hospitalsRoutes);
 

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { usePatients } from "@/hooks/usePatients";
 import { useRecords } from "@/hooks/useRecords";
+import { useSharedAccessStats } from "@/hooks/useSharedAccess";
 import { format } from "date-fns";
 
 // Helper function to get icon based on record type
@@ -55,6 +56,9 @@ export default function PatientDashboard() {
     { isCritical: undefined }
   );
 
+  // Fetch shared access stats
+  const { data: sharedStats } = useSharedAccessStats(patientId || 0);
+
   // Calculate quick stats from real data
   const quickStats = [
     {
@@ -65,7 +69,7 @@ export default function PatientDashboard() {
     },
     {
       label: "Shared With",
-      value: "0", // Sharing not implemented yet
+      value: sharedStats?.activeShares?.toString() || "0",
       icon: Share2,
       color: "text-success"
     },

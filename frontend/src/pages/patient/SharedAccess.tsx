@@ -23,13 +23,14 @@ import {
   Trash2,
   Settings,
   Users,
-  CheckCircle2,
-  XCircle,
   Search,
   Filter,
   QrCode,
   Copy,
   Check,
+  Loader2,
+  AlertCircle,
+  UserCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -55,50 +56,10 @@ import {
 import { MoreVertical } from "lucide-react";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { showSuccess } from "@/lib/toast";
-
-const sharedWith = [
-  {
-    id: 1,
-    name: "City General Hospital",
-    type: "Hospital",
-    access: "Full Records",
-    sharedOn: "Jan 10, 2026",
-    expiresOn: "Apr 10, 2026",
-    status: "active",
-    recordsAccessed: 12,
-  },
-  {
-    id: 2,
-    name: "Dr. Sarah Wilson",
-    type: "Doctor",
-    access: "Cardiology Records",
-    sharedOn: "Jan 5, 2026",
-    expiresOn: "Feb 5, 2026",
-    status: "active",
-    recordsAccessed: 5,
-  },
-  {
-    id: 3,
-    name: "Metro Health Clinic",
-    type: "Hospital",
-    access: "Lab Reports Only",
-    sharedOn: "Dec 15, 2025",
-    expiresOn: "Jan 15, 2026",
-    status: "expired",
-    recordsAccessed: 3,
-  },
-];
-
-const pendingRequests = [
-  {
-    id: 1,
-    name: "Regional Medical Center",
-    type: "Hospital",
-    requestedAccess: "Full Records",
-    requestedOn: "Jan 20, 2026",
-    reason: "Scheduled surgery consultation",
-  },
-];
+import { usePatientId } from "@/hooks/usePatientId";
+import { useSharedAccess, useSharedAccessStats, useRevokeShare } from "@/hooks/useSharedAccess";
+import { SharedAccess as SharedAccessType } from "@/api/services";
+import { format } from "date-fns";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -106,10 +67,19 @@ const getStatusBadge = (status: string) => {
       return <Badge className="bg-success/10 text-success border-success/20 hover:bg-success/20">Active</Badge>;
     case "expired":
       return <Badge className="bg-muted text-muted-foreground hover:bg-muted/80">Expired</Badge>;
-    case "pending":
-      return <Badge className="bg-warning/10 text-warning border-warning/20 hover:bg-warning/20">Pending</Badge>;
+    case "revoked":
+      return <Badge className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20">Revoked</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
+  }
+};
+
+const formatDate = (dateString?: string) => {
+  if (!dateString) return "N/A";
+  try {
+    return format(new Date(dateString), "MMM d, yyyy");
+  } catch {
+    return dateString;
   }
 };
 
@@ -117,11 +87,16 @@ export default function SharedAccess() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
-  const [selectedShare, setSelectedShare] = useState<typeof sharedWith[0] | null>(null);
+  const [selectedShare, setSelectedShare] = useState<SharedAccessType | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const filteredShares = sharedWith.filter((share) => {
-    const matchesSearch = share.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const { patientId } = usePatientId();
+  const { data: shares, isLoading, error } = useSharedAccess(patientId || 0);
+  const { data: stats } = useSharedAccessStats(patientId || 0);
+  const revokeShareMutation = useRevokeShare();
+
+  const filteredShares = (shares || []).filter((share) => {
+    const matchesSearch = share.provider_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || share.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -130,7 +105,7 @@ export default function SharedAccess() {
     return `${window.location.origin}/shared/${shareId}`;
   };
 
-  const handleShowQR = (share: typeof sharedWith[0]) => {
+  const handleShowQR = (share: SharedAccessType) => {
     setSelectedShare(share);
     setQrDialogOpen(true);
     setCopied(false);
@@ -138,19 +113,54 @@ export default function SharedAccess() {
 
   const handleCopyLink = () => {
     if (selectedShare) {
-      navigator.clipboard.writeText(generateShareUrl(selectedShare.id));
+      navigator.clipboard.writeText(generateShareUrl(selectedShare.share_id));
       setCopied(true);
       showSuccess("Link copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const stats = [
-    { label: "Active Shares", value: sharedWith.filter(s => s.status === "active").length, icon: Users, color: "text-success" },
-    { label: "Pending Requests", value: pendingRequests.length, icon: Clock, color: "text-warning" },
-    { label: "Total Shared", value: sharedWith.length, icon: Shield, color: "text-primary" },
-    { label: "Records Accessed", value: sharedWith.reduce((acc, s) => acc + s.recordsAccessed, 0), icon: Eye, color: "text-info" },
+  const handleRevokeAccess = (shareId: number) => {
+    if (!patientId) return;
+    revokeShareMutation.mutate({ patientId, shareId });
+  };
+
+  const statsData = [
+    { label: "Active Shares", value: stats?.activeShares || 0, icon: Users, color: "text-success" },
+    { label: "Pending Requests", value: stats?.pendingRequests || 0, icon: Clock, color: "text-warning" },
+    { label: "Total Shared", value: stats?.totalShares || 0, icon: Shield, color: "text-primary" },
+    { label: "Records Accessed", value: stats?.totalRecordsAccessed || 0, icon: Eye, color: "text-info" },
   ];
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <DashboardLayout userType="patient">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading shared access...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <DashboardLayout userType="patient">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="h-8 w-8 mx-auto mb-4 text-destructive" />
+            <p className="text-muted-foreground">
+              {error?.message || "Failed to load shared access"}
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout userType="patient">
@@ -218,7 +228,7 @@ export default function SharedAccess() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat) => {
+          {statsData.map((stat) => {
             const Icon = stat.icon;
             return (
               <Card key={stat.label} className="card-stat">
@@ -235,71 +245,6 @@ export default function SharedAccess() {
             );
           })}
         </div>
-
-        {/* shows pending requests */}
-        {pendingRequests.length > 0 && (
-          <Card className="border-warning/50 bg-warning/5">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="h-5 w-5 text-warning" />
-                Pending Access Requests ({pendingRequests.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Provider</TableHead>
-                    <TableHead className="hidden sm:table-cell">Requested Access</TableHead>
-                    <TableHead className="hidden md:table-cell">Reason</TableHead>
-                    <TableHead className="hidden sm:table-cell">Requested On</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                              <Building2 className="h-4 w-4" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{request.name}</p>
-                            <p className="text-sm text-muted-foreground">{request.type}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge variant="outline">{request.requestedAccess}</Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {request.reason}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">
-                        {request.requestedOn}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button size="sm" className="gap-1">
-                            <CheckCircle2 className="h-4 w-4" />
-                            <span className="hidden sm:inline">Approve</span>
-                          </Button>
-                          <Button variant="outline" size="sm" className="gap-1">
-                            <XCircle className="h-4 w-4" />
-                            <span className="hidden sm:inline">Decline</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Use filters */}
         <Card>
@@ -323,6 +268,7 @@ export default function SharedAccess() {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="revoked">Revoked</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -352,32 +298,34 @@ export default function SharedAccess() {
                 </TableHeader>
                 <TableBody>
                   {filteredShares.map((share) => (
-                    <TableRow key={share.id}>
+                    <TableRow key={share.share_id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
                             <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                              {share.type === "Hospital" ? (
+                              {share.provider_type === "Hospital" ? (
                                 <Building2 className="h-4 w-4" />
+                              ) : share.provider_type === "EmergencyContact" ? (
+                                <UserCircle className="h-4 w-4" />
                               ) : (
-                                share.name.charAt(0)
+                                share.provider_name.charAt(0)
                               )}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{share.name}</p>
-                            <p className="text-sm text-muted-foreground">{share.type}</p>
+                            <p className="font-medium">{share.provider_name}</p>
+                            <p className="text-sm text-muted-foreground">{share.provider_type}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <Badge variant="outline">{share.access}</Badge>
+                        <Badge variant="outline">{share.access_level}</Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {share.recordsAccessed} records
+                        {share.records_accessed_count} records
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
-                        {share.expiresOn}
+                        {formatDate(share.expires_on)}
                       </TableCell>
                       <TableCell>{getStatusBadge(share.status)}</TableCell>
                       <TableCell className="text-right">
@@ -407,7 +355,10 @@ export default function SharedAccess() {
                                 <Settings className="mr-2 h-4 w-4" />
                                 Edit Access
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleRevokeAccess(share.share_id)}
+                              >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Revoke Access
                               </DropdownMenuItem>
@@ -459,14 +410,14 @@ export default function SharedAccess() {
                 Share Access via QR Code
               </DialogTitle>
               <DialogDescription>
-                {selectedShare && `Share your ${selectedShare.access.toLowerCase()} with ${selectedShare.name}`}
+                {selectedShare && `Share your ${selectedShare.access_level.toLowerCase()} with ${selectedShare.provider_name}`}
               </DialogDescription>
             </DialogHeader>
             {selectedShare && (
               <div className="space-y-4">
                 <div className="flex justify-center">
                   <QRCodeDisplay
-                    value={generateShareUrl(selectedShare.id)}
+                    value={generateShareUrl(selectedShare.share_id)}
                     title=""
                     description=""
                     size={180}
@@ -477,7 +428,7 @@ export default function SharedAccess() {
                   <div className="flex gap-2">
                     <Input
                       readOnly
-                      value={generateShareUrl(selectedShare.id)}
+                      value={generateShareUrl(selectedShare.share_id)}
                       className="text-sm"
                     />
                     <Button
@@ -494,7 +445,7 @@ export default function SharedAccess() {
                   </div>
                 </div>
                 <div className="text-sm text-muted-foreground text-center">
-                  <p>Access expires: {selectedShare.expiresOn}</p>
+                  <p>Access expires: {formatDate(selectedShare.expires_on)}</p>
                 </div>
               </div>
             )}
