@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Menu, Shield, X } from "lucide-react";
 import { useState } from "react";
 
@@ -41,11 +41,10 @@ export function Header() {
               <Link
                 key={link.href}
                 to={link.href}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  location.pathname === link.href
-                    ? "text-primary bg-primary/5"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${location.pathname === link.href
+                  ? "text-primary bg-primary/5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
               >
                 {link.label}
               </Link>
@@ -71,6 +70,7 @@ export function Header() {
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+            <SheetTitle className="sr-only">Menu</SheetTitle>
             <div className="flex flex-col gap-6 pt-6">
               <nav className="flex flex-col gap-2">
                 {navLinks.map((link) => (
@@ -88,11 +88,10 @@ export function Header() {
                       key={link.href}
                       to={link.href}
                       onClick={() => setIsOpen(false)}
-                      className={`px-4 py-3 text-base font-medium rounded-lg transition-colors ${
-                        location.pathname === link.href
-                          ? "text-primary bg-primary/5"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                      }`}
+                      className={`px-4 py-3 text-base font-medium rounded-lg transition-colors ${location.pathname === link.href
+                        ? "text-primary bg-primary/5"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        }`}
                     >
                       {link.label}
                     </Link>
