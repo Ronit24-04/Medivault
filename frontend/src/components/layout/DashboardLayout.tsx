@@ -28,6 +28,7 @@ import {
 import { useState } from "react";
 import { useProfile } from "@/hooks/useAuth";
 import { usePatients } from "@/hooks/usePatients";
+import { ProfileSwitcher } from "@/components/profile/ProfileSwitcher";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -151,6 +152,9 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
 
           {/* Right Section */}
           <div className="flex items-center gap-2">
+            {/* Profile Switcher - Only for patient users */}
+            {userType === "patient" && <ProfileSwitcher />}
+
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />

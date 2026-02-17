@@ -19,10 +19,11 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { usePatients } from "@/hooks/usePatients";
 import { useRecords } from "@/hooks/useRecords";
 import { useSharedAccessStats } from "@/hooks/useSharedAccess";
 import { format } from "date-fns";
+import { useProfileStore } from "@/stores/useProfileStore";
+import { useEffect } from "react";
 
 // Helper function to get icon based on record type
 const getRecordIcon = (recordType: string) => {
@@ -43,14 +44,16 @@ const formatDate = (dateString: string) => {
 };
 
 export default function PatientDashboard() {
-  // Fetch patients data
-  const { data: patients, isLoading: patientsLoading, error: patientsError } = usePatients();
+  const { currentProfile, loadProfiles, isLoading: profilesLoading } = useProfileStore();
 
-  // Get primary patient ID (first patient for now)
-  const primaryPatient = patients?.find(p => p.is_primary) || patients?.[0];
-  const patientId = primaryPatient?.patient_id;
+  // Load profiles on mount
+  useEffect(() => {
+    loadProfiles();
+  }, [loadProfiles]);
 
-  // Fetch medical records for the primary patient
+  const patientId = currentProfile?.patient_id;
+
+  // Fetch medical records for the current profile
   const { data: records, isLoading: recordsLoading, error: recordsError } = useRecords(
     patientId || 0,
     { isCritical: undefined }
@@ -98,7 +101,7 @@ export default function PatientDashboard() {
 
 
   // Loading state
-  if (patientsLoading || recordsLoading) {
+  if (profilesLoading || recordsLoading) {
     return (
       <DashboardLayout userType="patient">
         <div className="flex items-center justify-center h-64">
@@ -112,14 +115,14 @@ export default function PatientDashboard() {
   }
 
   // Error state
-  if (patientsError || recordsError) {
+  if (recordsError || !currentProfile) {
     return (
       <DashboardLayout userType="patient">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <AlertCircle className="h-8 w-8 mx-auto mb-4 text-destructive" />
             <p className="text-muted-foreground">
-              {patientsError?.message || recordsError?.message || "Failed to load dashboard"}
+              {recordsError?.message || !currentProfile ? "No profile selected" : "Failed to load dashboard"}
             </p>
           </div>
         </div>
@@ -134,7 +137,7 @@ export default function PatientDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">
-              Welcome back, {primaryPatient?.full_name || "User"}
+              Welcome back, {currentProfile?.full_name || "User"}
             </h1>
             <p className="text-muted-foreground">Here's an overview of your health records.</p>
           </div>
