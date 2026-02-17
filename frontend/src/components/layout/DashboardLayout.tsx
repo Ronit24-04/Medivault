@@ -26,6 +26,8 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { useState } from "react";
+import { useProfile } from "@/hooks/useAuth";
+import { usePatients } from "@/hooks/usePatients";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -54,9 +56,18 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Fetch user profile data
+  const { data: profile } = useProfile();
+  const { data: patients } = usePatients();
+
+  // Get primary patient for patient users
+  const primaryPatient = patients?.find(p => p.is_primary) || patients?.[0];
+
   const navItems = userType === "patient" ? patientNavItems : hospitalNavItems;
-  const userName = userType === "patient" ? "John Doe" : "City Hospital";
-  const userEmail = userType === "patient" ? "john.doe@email.com" : "admin@cityhospital.com";
+  const userName = userType === "patient"
+    ? (primaryPatient?.full_name || "User")
+    : (profile?.email?.split('@')[0] || "Hospital");
+  const userEmail = profile?.email || "user@email.com";
 
   const NavContent = () => (
     <nav className="flex flex-col gap-1 p-4">
@@ -69,8 +80,8 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
             to={item.href}
             onClick={() => setIsOpen(false)}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
           >
             <Icon className="h-5 w-5" />

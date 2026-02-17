@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { usePatients } from "@/hooks/usePatients";
 import { useRecords } from "@/hooks/useRecords";
+import { useProfile } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
 // Helper function to format date
@@ -61,12 +62,18 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function HospitalDashboard() {
+  // Fetch user profile data
+  const { data: profile } = useProfile();
+
   // Fetch patients data
   const { data: patients, isLoading: patientsLoading, error: patientsError } = usePatients();
 
   // Get all records count (we'll fetch for first patient as example)
   const firstPatientId = patients?.[0]?.patient_id;
   const { data: records } = useRecords(firstPatientId || 0);
+
+  // Get hospital/user name for display
+  const hospitalName = profile?.email || "Hospital";
 
   // Calculate stats from real data
   const stats = [
@@ -145,7 +152,7 @@ export default function HospitalDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Hospital Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, City General Hospital</p>
+            <p className="text-muted-foreground">Welcome back, {hospitalName}</p>
           </div>
           <Button asChild>
             <Link to="/hospital/patients">
