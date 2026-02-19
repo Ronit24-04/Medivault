@@ -45,9 +45,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useRecords } from "@/hooks/useRecords";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { format } from "date-fns";
+import { MedicalRecord } from "@/api/types";
 
 // Helper function to get icon based on record type
 const getRecordIcon = (recordType?: string) => {
@@ -96,6 +103,18 @@ const getStatusBadge = (isCritical: boolean) => {
 export default function PatientRecords() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [viewingRecord, setViewingRecord] = useState<MedicalRecord | null>(null);
+
+  const handleDownload = (record: MedicalRecord) => {
+    const a = document.createElement("a");
+    a.href = record.file_path;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.download = record.title;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   const currentProfile = useProfileStore((s) => s.currentProfile);
   const patientId = currentProfile?.patient_id;
@@ -280,14 +299,23 @@ export default function PatientRecords() {
                         <TableCell>{getStatusBadge(record.is_critical)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="hidden sm:inline-flex"
+                              title="View record"
+                              onClick={() => setViewingRecord(record)}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="hidden sm:inline-flex"
+                              title="Download record"
+                              onClick={() => handleDownload(record)}
+                            >
                               <Download className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
-                              <Share2 className="h-4 w-4" />
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -296,17 +324,13 @@ export default function PatientRecords() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setViewingRecord(record)}>
                                   <Eye className="mr-2 h-4 w-4" />
-                                  View Details
+                                  View Record
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownload(record)}>
                                   <Download className="mr-2 h-4 w-4" />
                                   Download
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Share2 className="mr-2 h-4 w-4" />
-                                  Share
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -334,6 +358,81 @@ export default function PatientRecords() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Record Viewer Modal */}
+      <Dialog open={!!viewingRecord} onOpenChange={(open) => !open && setViewingRecord(null)}>
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              {viewingRecord?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Record metadata */}
+          <div className="flex flex-wrap gap-3 text-sm text-muted-foreground border-b pb-3">
+            {viewingRecord?.category && (
+              <Badge variant="outline">{viewingRecord.category}</Badge>
+            )}
+            {viewingRecord?.record_date && (
+              <span>📅 {formatDate(viewingRecord.record_date)}</span>
+            )}
+            {viewingRecord?.physician_name && (
+              <span>👨‍⚕️ {viewingRecord.physician_name}</span>
+            )}
+            {viewingRecord?.facility_name && (
+              <span>🏥 {viewingRecord.facility_name}</span>
+            )}
+            {viewingRecord?.file_size_bytes && (
+              <span>📦 {formatFileSize(viewingRecord.file_size_bytes)}</span>
+            )}
+          </div>
+
+          {/* File viewer */}
+          <div className="flex-1 overflow-auto rounded-lg bg-muted/30 min-h-[400px] flex items-center justify-center">
+            {viewingRecord?.file_type?.startsWith("image/") ? (
+              <img
+                src={viewingRecord.file_path}
+                alt={viewingRecord.title}
+                className="max-w-full max-h-[60vh] object-contain rounded-lg"
+              />
+            ) : viewingRecord?.file_type === "application/pdf" ? (
+              <iframe
+                src={viewingRecord.file_path}
+                title={viewingRecord.title}
+                className="w-full h-[60vh] rounded-lg border-0"
+              />
+            ) : (
+              <div className="text-center p-8">
+                <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+                <p className="text-muted-foreground mb-4">Preview not available for this file type.</p>
+                <Button onClick={() => viewingRecord && handleDownload(viewingRecord)}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download to View
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              className="flex-1"
+              onClick={() => viewingRecord && handleDownload(viewingRecord)}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => viewingRecord && window.open(viewingRecord.file_path, "_blank")}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Open in New Tab
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
