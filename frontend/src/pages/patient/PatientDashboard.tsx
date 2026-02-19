@@ -26,8 +26,8 @@ import { useProfileStore } from "@/stores/useProfileStore";
 import { useEffect } from "react";
 
 // Helper function to get icon based on record type
-const getRecordIcon = (recordType: string) => {
-  const type = recordType.toLowerCase();
+const getRecordIcon = (recordType?: string) => {
+  const type = (recordType || '').toLowerCase();
   if (type.includes('lab') || type.includes('test')) return TestTube;
   if (type.includes('prescription') || type.includes('medication')) return Pill;
   if (type.includes('cardio') || type.includes('heart')) return HeartPulse;
@@ -86,13 +86,13 @@ export default function PatientDashboard() {
 
   // Get recent records (last 3)
   const recentRecords = records?.slice(0, 3).map(record => {
-    const Icon = getRecordIcon(record.record_type);
+    const Icon = getRecordIcon(record.category);
     return {
       id: record.record_id,
       title: record.title,
-      type: record.record_type,
+      type: record.category,
       date: formatDate(record.record_date),
-      hospital: record.hospital_name || "Unknown Hospital",
+      hospital: record.facility_name || "Unknown Hospital",
       icon: Icon,
       status: record.is_critical ? "critical" : "normal",
     };

@@ -51,19 +51,16 @@ export class RecordsService {
         const record = await prisma.medicalRecord.create({
             data: {
                 patient_id: patientId,
-                record_type: data.recordType,
+                category: data.recordType,
                 title: data.title,
                 description: data.description,
                 record_date: new Date(data.recordDate),
-                doctor_name: data.doctorName,
-                hospital_name: data.hospitalName,
-                medical_condition: data.medicalCondition,
-                file_url: data.fileUrl,
+                physician_name: data.doctorName,
+                facility_name: data.hospitalName,
+                file_path: data.fileUrl,
                 file_type: data.fileType,
-                file_size: data.fileSize,
-                thumbnail_url: data.thumbnailUrl,
+                file_size_bytes: data.fileSize,
                 is_critical: data.isCritical || false,
-                tags: data.tags,
             },
         });
 
@@ -159,15 +156,13 @@ export class RecordsService {
         const record = await prisma.medicalRecord.update({
             where: { record_id: recordId },
             data: {
-                record_type: data.recordType,
+                category: data.recordType,
                 title: data.title,
                 description: data.description,
                 record_date: data.recordDate ? new Date(data.recordDate) : undefined,
-                doctor_name: data.doctorName,
-                hospital_name: data.hospitalName,
-                medical_condition: data.medicalCondition,
+                physician_name: data.doctorName,
+                facility_name: data.hospitalName,
                 is_critical: data.isCritical,
-                tags: data.tags,
             },
         });
 
@@ -205,12 +200,11 @@ export class RecordsService {
             orderBy: { record_date: 'desc' },
             select: {
                 record_id: true,
-                record_type: true,
+                category: true,
                 title: true,
                 record_date: true,
-                doctor_name: true,
-                hospital_name: true,
-                medical_condition: true,
+                physician_name: true,
+                facility_name: true,
                 is_critical: true,
             },
         });

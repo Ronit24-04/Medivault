@@ -80,19 +80,16 @@ export interface CreatePatientRequest {
 export interface MedicalRecord {
     record_id: number;
     patient_id: number;
-    record_type: string;
+    category: string;
     title: string;
     description?: string;
     record_date: string;
-    doctor_name?: string;
-    hospital_name?: string;
-    medical_condition?: string;
-    file_url: string;
+    physician_name?: string;
+    facility_name?: string;
+    file_path: string;
     file_type: string;
-    file_size?: number;
-    thumbnail_url?: string;
+    file_size_bytes?: number;
     is_critical: boolean;
-    tags?: string;
     created_at: string;
     updated_at: string;
 }

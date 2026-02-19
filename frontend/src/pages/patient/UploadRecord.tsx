@@ -19,7 +19,11 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
+import { useUploadRecord } from "@/hooks/useRecords";
+import { useProfileStore } from "@/stores/useProfileStore";
+import { toast } from "sonner";
 
 const recordTypes = [
   { value: "lab", label: "Lab Report" },
@@ -34,19 +38,27 @@ const recordTypes = [
 
 export default function UploadRecord() {
   const navigate = useNavigate();
+  const { mutateAsync: uploadRecord, isPending } = useUploadRecord();
+  const currentProfile = useProfileStore((s) => s.currentProfile);
+
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  // Form fields
+  const [title, setTitle] = useState("");
+  const [recordType, setRecordType] = useState("");
+  const [recordDate, setRecordDate] = useState("");
+  const [hospitalName, setHospitalName] = useState("");
+  const [doctorName, setDoctorName] = useState("");
+  const [notes, setNotes] = useState("");
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
+  const handleDragLeave = () => setIsDragging(false);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -57,8 +69,7 @@ export default function UploadRecord() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
-      setFiles((prev) => [...prev, ...selectedFiles]);
+      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
     }
   };
 
@@ -68,16 +79,39 @@ export default function UploadRecord() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsUploading(true);
-    
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    setIsUploading(false);
-    setUploadSuccess(true);
-    
-    setTimeout(() => {
-      navigate("/patient/records");
-    }, 1500);
+
+    if (!currentProfile) {
+      toast.error("No active profile selected. Please select a profile first.");
+      return;
+    }
+
+    if (files.length === 0) {
+      toast.error("Please select at least one file to upload.");
+      return;
+    }
+
+    try {
+      // Upload each file sequentially
+      for (const file of files) {
+        await uploadRecord({
+          patientId: currentProfile.patient_id,
+          data: {
+            file,
+            title,
+            recordType,
+            recordDate,
+            doctorName: doctorName || undefined,
+            hospitalName: hospitalName || undefined,
+            description: notes || undefined,
+          },
+        });
+      }
+
+      setUploadSuccess(true);
+      setTimeout(() => navigate("/patient/records"), 1500);
+    } catch (error) {
+      // Error toast is handled by the hook's onError callback
+    }
   };
 
   if (uploadSuccess) {
@@ -102,7 +136,13 @@ export default function UploadRecord() {
         {/* Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Upload Record</h1>
-          <p className="text-muted-foreground">Add a new medical record to your vault.</p>
+          <p className="text-muted-foreground">
+            Add a new medical record for{" "}
+            <span className="text-foreground font-medium">
+              {currentProfile?.full_name || "your profile"}
+            </span>
+            .
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -119,11 +159,10 @@ export default function UploadRecord() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-                  isDragging
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${isDragging
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-primary/50"
-                }`}
+                  }`}
               >
                 <input
                   type="file"
@@ -183,13 +222,19 @@ export default function UploadRecord() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Record Title *</Label>
-                <Input id="title" placeholder="e.g., Blood Test Report" required />
+                <Input
+                  id="title"
+                  placeholder="e.g., Blood Test Report"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="type">Record Type *</Label>
-                  <Select required>
+                  <Select value={recordType} onValueChange={setRecordType} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
@@ -205,18 +250,34 @@ export default function UploadRecord() {
 
                 <div className="space-y-2">
                   <Label htmlFor="date">Record Date *</Label>
-                  <Input id="date" type="date" required />
+                  <Input
+                    id="date"
+                    type="date"
+                    value={recordDate}
+                    onChange={(e) => setRecordDate(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="hospital">Hospital / Clinic</Label>
-                <Input id="hospital" placeholder="e.g., City General Hospital" />
+                <Input
+                  id="hospital"
+                  placeholder="e.g., City General Hospital"
+                  value={hospitalName}
+                  onChange={(e) => setHospitalName(e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="doctor">Doctor Name</Label>
-                <Input id="doctor" placeholder="e.g., Dr. Sarah Wilson" />
+                <Input
+                  id="doctor"
+                  placeholder="e.g., Dr. Sarah Wilson"
+                  value={doctorName}
+                  onChange={(e) => setDoctorName(e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
@@ -225,6 +286,8 @@ export default function UploadRecord() {
                   id="notes"
                   placeholder="Add any additional notes about this record..."
                   rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
             </CardContent>
@@ -237,17 +300,18 @@ export default function UploadRecord() {
               variant="outline"
               className="flex-1"
               onClick={() => navigate("/patient/records")}
+              disabled={isPending}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               className="flex-1"
-              disabled={files.length === 0 || isUploading}
+              disabled={files.length === 0 || isPending || !recordType}
             >
-              {isUploading ? (
+              {isPending ? (
                 <>
-                  <span className="animate-spin mr-2">⏳</span>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Uploading...
                 </>
               ) : (

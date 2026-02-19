@@ -45,13 +45,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePatients } from "@/hooks/usePatients";
 import { useRecords } from "@/hooks/useRecords";
+import { useProfileStore } from "@/stores/useProfileStore";
 import { format } from "date-fns";
 
 // Helper function to get icon based on record type
-const getRecordIcon = (recordType: string) => {
-  const type = recordType.toLowerCase();
+const getRecordIcon = (recordType?: string) => {
+  const type = (recordType || '').toLowerCase();
   if (type.includes('lab') || type.includes('test')) return TestTube;
   if (type.includes('prescription') || type.includes('medication')) return Pill;
   if (type.includes('cardio') || type.includes('heart')) return Activity;
@@ -97,12 +97,8 @@ export default function PatientRecords() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
-  // Fetch patients data
-  const { data: patients } = usePatients();
-
-  // Get primary patient ID
-  const primaryPatient = patients?.find(p => p.is_primary) || patients?.[0];
-  const patientId = primaryPatient?.patient_id;
+  const currentProfile = useProfileStore((s) => s.currentProfile);
+  const patientId = currentProfile?.patient_id;
 
   // Fetch medical records
   const { data: records, isLoading, error } = useRecords(patientId || 0);
@@ -111,12 +107,12 @@ export default function PatientRecords() {
   const filteredRecords = records?.filter((record) => {
     const matchesSearch =
       record.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (record.hospital_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-      (record.doctor_name?.toLowerCase() || "").includes(searchQuery.toLowerCase());
+      (record.facility_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (record.physician_name?.toLowerCase() || "").includes(searchQuery.toLowerCase());
 
     const matchesCategory =
       selectedCategory === "all" ||
-      record.record_type.toLowerCase().includes(selectedCategory.toLowerCase());
+      record.category.toLowerCase().includes(selectedCategory.toLowerCase());
 
     return matchesSearch && matchesCategory;
   }) || [];
@@ -131,13 +127,13 @@ export default function PatientRecords() {
     },
     {
       label: "Lab Reports",
-      value: records?.filter(r => r.record_type.toLowerCase().includes("lab")).length || 0,
+      value: records?.filter(r => r.category.toLowerCase().includes("lab")).length || 0,
       icon: TestTube,
       color: "text-info"
     },
     {
       label: "Prescriptions",
-      value: records?.filter(r => r.record_type.toLowerCase().includes("prescription")).length || 0,
+      value: records?.filter(r => r.category.toLowerCase().includes("prescription")).length || 0,
       icon: Pill,
       color: "text-success"
     },
@@ -256,7 +252,7 @@ export default function PatientRecords() {
                 </TableHeader>
                 <TableBody>
                   {filteredRecords.map((record) => {
-                    const Icon = getRecordIcon(record.record_type);
+                    const Icon = getRecordIcon(record.category);
                     return (
                       <TableRow key={record.record_id}>
                         <TableCell>
@@ -267,16 +263,16 @@ export default function PatientRecords() {
                             <div className="min-w-0">
                               <p className="font-medium truncate">{record.title}</p>
                               <p className="text-sm text-muted-foreground md:hidden">
-                                {record.record_type}
+                                {record.category}
                               </p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <Badge variant="outline">{record.record_type}</Badge>
+                          <Badge variant="outline">{record.category}</Badge>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell text-muted-foreground">
-                          {record.hospital_name || "N/A"}
+                          {record.facility_name || "N/A"}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">
                           {formatDate(record.record_date)}
