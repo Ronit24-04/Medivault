@@ -10,6 +10,7 @@ interface RegisterData {
     password: string;
     phoneNumber?: string;
     userType: string;
+    fullName?: string;
 }
 
 interface LoginData {
@@ -55,6 +56,20 @@ export class AuthService {
 
         // Send verification email
         await sendVerificationEmail(admin.email, verificationToken);
+
+        // If user_type is patient and fullName provided, auto-create primary Patient record
+        if (data.userType === 'patient' && data.fullName) {
+            await prisma.patient.create({
+                data: {
+                    admin_id: admin.admin_id,
+                    full_name: data.fullName,
+                    address: '',
+                    date_of_birth: new Date('1900-01-01'),
+                    relationship: 'self',
+                    is_primary: true,
+                },
+            });
+        }
 
         return {
             admin,

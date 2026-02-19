@@ -18,6 +18,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [fullName, setFullName] = useState("");
 
   const registerMutation = useRegister();
 
@@ -40,6 +41,7 @@ export default function Register() {
         password,
         phoneNumber: phoneNumber || undefined,
         userType: userType,
+        fullName: userType === 'patient' ? fullName : undefined,
       });
 
       // Redirect to login after successful registration
@@ -87,6 +89,24 @@ export default function Register() {
           </Tabs>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {userType === "patient" && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Doe"
+                    className="pl-10"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required={userType === "patient"}
+                    disabled={registerMutation.isPending}
+                  />
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">

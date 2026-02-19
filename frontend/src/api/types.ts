@@ -16,6 +16,7 @@ export interface RegisterRequest {
     password: string;
     phoneNumber?: string;
     userType: 'patient' | 'hospital';
+    fullName?: string;
 }
 
 export interface AuthResponse {

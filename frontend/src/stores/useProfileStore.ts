@@ -29,7 +29,18 @@ export const useProfileStore = create<ProfileState>()(
             setProfiles: (profiles) => {
                 set({ profiles });
                 const current = get().currentProfile;
-                if (!current && profiles.length > 0) {
+                if (current) {
+                    // Refresh the currentProfile from the fresh API data to keep it in sync
+                    const refreshed = profiles.find((p) => p.patient_id === current.patient_id);
+                    if (refreshed) {
+                        set({ currentProfile: refreshed });
+                    } else if (profiles.length > 0) {
+                        // Profile no longer exists, fall back to primary
+                        const primary = profiles.find((p) => p.is_primary) || profiles[0];
+                        set({ currentProfile: primary });
+                    }
+                } else if (profiles.length > 0) {
+                    // No profile selected yet, pick the primary
                     const primary = profiles.find((p) => p.is_primary) || profiles[0];
                     set({ currentProfile: primary });
                 }
@@ -96,22 +107,8 @@ export const useProfileStore = create<ProfileState>()(
         {
             name: 'profile-storage',
             partialize: (state) => ({
-                currentProfile: state.currentProfile
-                    ? { patient_id: state.currentProfile.patient_id }
-                    : null,
+                currentProfile: state.currentProfile || null,
             }),
-            merge: (persistedState: any, currentState) => {
-                const merged = { ...currentState, ...persistedState };
-                if (persistedState?.currentProfile?.patient_id && currentState.profiles.length > 0) {
-                    const restoredProfile = currentState.profiles.find(
-                        (p: Patient) => p.patient_id === persistedState.currentProfile.patient_id
-                    );
-                    if (restoredProfile) {
-                        merged.currentProfile = restoredProfile;
-                    }
-                }
-                return merged;
-            },
         }
     )
 );

@@ -25,8 +25,8 @@ import {
   Activity,
   FolderOpen,
 } from "lucide-react";
-import { useState } from "react";
-import { useProfile } from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
+import { useProfile, useLogout } from "@/hooks/useAuth";
 import { usePatients } from "@/hooks/usePatients";
 import { ProfileSwitcher } from "@/components/profile/ProfileSwitcher";
 
@@ -56,6 +56,20 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const logout = useLogout();
+
+  // Back-button auto-logout: push a sentinel state so we can detect back navigation
+  useEffect(() => {
+    history.pushState({ dashboard: true }, "");
+
+    const handlePopState = () => {
+      logout();
+      navigate("/login", { replace: true });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Fetch user profile data
   const { data: profile } = useProfile();
@@ -183,7 +197,10 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/login")} className="text-destructive">
+                <DropdownMenuItem
+                  onClick={() => { logout(); navigate("/login", { replace: true }); }}
+                  className="text-destructive"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>
