@@ -39,7 +39,7 @@ import {
 import { useHospitalSharedRecords } from "@/hooks/useHospital";
 import { HospitalSharedRecord } from "@/api/services/hospital-admin.service";
 import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return "—";
@@ -51,7 +51,6 @@ const formatDate = (dateString?: string) => {
 };
 
 export default function HospitalDocuments() {
-  const { toast } = useToast();
   const { data: sharedRecords, isLoading } = useHospitalSharedRecords();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,10 +70,7 @@ export default function HospitalDocuments() {
   });
 
   const handleDownload = (doc: HospitalSharedRecord) => {
-    toast({
-      title: "Download started",
-      description: `Requesting records access for ${doc.patient.full_name}.`,
-    });
+    toast.info(`Requesting records access for ${doc.patient.full_name}.`);
   };
 
   return (

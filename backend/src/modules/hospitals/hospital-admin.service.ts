@@ -12,13 +12,9 @@ interface UpdateHospitalProfileData {
 
 export class HospitalAdminService {
     private async getHospitalByAdminId(adminId: number) {
-        const hospital = await prisma.hospital.findFirst({
+        return prisma.hospital.findFirst({
             where: { admin_id: adminId },
         });
-        if (!hospital) {
-            throw new AppError(404, 'Hospital profile not found for this account');
-        }
-        return hospital;
     }
 
     async getProfile(adminId: number) {
@@ -28,23 +24,39 @@ export class HospitalAdminService {
     async updateProfile(adminId: number, data: UpdateHospitalProfileData) {
         const hospital = await this.getHospitalByAdminId(adminId);
 
-        return prisma.hospital.update({
-            where: { hospital_id: hospital.hospital_id },
+        if (hospital) {
+            return prisma.hospital.update({
+                where: { hospital_id: hospital.hospital_id },
+                data: {
+                    ...(data.hospitalName !== undefined && { hospital_name: data.hospitalName }),
+                    ...(data.address !== undefined && { address: data.address }),
+                    ...(data.city !== undefined && { city: data.city }),
+                    ...(data.state !== undefined && { state: data.state }),
+                    ...(data.phoneNumber !== undefined && { phone_number: data.phoneNumber }),
+                    ...(data.email !== undefined && { email: data.email }),
+                },
+            });
+        }
+
+        return prisma.hospital.create({
             data: {
-                hospital_name: data.hospitalName,
-                address: data.address,
-                city: data.city,
-                state: data.state,
-                phone_number: data.phoneNumber,
+                admin_id: adminId,
+                hospital_name: data.hospitalName || 'My Hospital',
+                address: data.address || '',
+                city: data.city || '',
+                state: data.state || '',
+                phone_number: data.phoneNumber || '',
                 email: data.email,
+                hospital_type: 'General',
             },
         });
     }
 
     async getSharedRecords(adminId: number) {
         const hospital = await this.getHospitalByAdminId(adminId);
+        if (!hospital) return [];
 
-        const records = await prisma.sharedAccess.findMany({
+        return prisma.sharedAccess.findMany({
             where: { hospital_id: hospital.hospital_id },
             include: {
                 patient: {
@@ -58,14 +70,13 @@ export class HospitalAdminService {
             },
             orderBy: { shared_on: 'desc' },
         });
-
-        return records;
     }
 
     async getAlerts(adminId: number) {
         const hospital = await this.getHospitalByAdminId(adminId);
+        if (!hospital) return [];
 
-        const alerts = await prisma.emergencyAlert.findMany({
+        return prisma.emergencyAlert.findMany({
             where: { hospital_id: hospital.hospital_id },
             include: {
                 patient: {
@@ -77,12 +88,11 @@ export class HospitalAdminService {
             },
             orderBy: { sent_at: 'desc' },
         });
-
-        return alerts;
     }
 
     async acknowledgeAlert(adminId: number, alertId: number) {
         const hospital = await this.getHospitalByAdminId(adminId);
+        if (!hospital) throw new AppError(404, 'Hospital profile not found');
 
         const alert = await prisma.emergencyAlert.findFirst({
             where: {

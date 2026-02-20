@@ -51,6 +51,7 @@ export default function HospitalAlerts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [readFilter, setReadFilter] = useState("all");
+  const [acknowledgingId, setAcknowledgingId] = useState<number | null>(null);
 
   // Track locally-read items (alerts that don't have acknowledge API support on "read" action)
   const [locallyRead, setLocallyRead] = useState<Set<number>>(new Set());
@@ -243,12 +244,15 @@ export default function HospitalAlerts() {
                             size="sm"
                             variant="destructive"
                             onClick={() => {
-                              acknowledgeAlert.mutate(alert.alert_id);
+                              setAcknowledgingId(alert.alert_id);
+                              acknowledgeAlert.mutate(alert.alert_id, {
+                                onSettled: () => setAcknowledgingId(null),
+                              });
                               markAsRead(alert.alert_id);
                             }}
-                            disabled={acknowledgeAlert.isPending}
+                            disabled={acknowledgingId === alert.alert_id}
                           >
-                            {acknowledgeAlert.isPending ? (
+                            {acknowledgingId === alert.alert_id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
                               <Check className="mr-1 h-3 w-3" />

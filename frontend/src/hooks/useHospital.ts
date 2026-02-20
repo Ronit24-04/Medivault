@@ -6,7 +6,7 @@ export const useHospitalProfile = () => {
     return useQuery({
         queryKey: ['hospital-profile'],
         queryFn: () => hospitalAdminService.getProfile(),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 0,
     });
 };
 

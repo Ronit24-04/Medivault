@@ -21,16 +21,21 @@ export default function HospitalSettings() {
   const { data: hospitalProfile, isLoading } = useHospitalProfile();
   const updateProfile = useUpdateHospitalProfile();
 
-  // Form state
+  // Form state — all start empty, filled from API once it loads
   const [hospitalName, setHospitalName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [stateVal, setStateVal] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [prefilled, setPrefilled] = useState(false);
 
-  // Pre-fill form when profile loads
+  // Pre-fill form once — only on first load so user edits aren't overwritten
   useEffect(() => {
+    if (prefilled) return;
+    if (isLoading) return;
+
+    // hospitalProfile is null for brand-new accounts (no Hospital row yet)
     if (hospitalProfile) {
       setHospitalName(hospitalProfile.hospital_name ?? "");
       setAddress(hospitalProfile.address ?? "");
@@ -39,11 +44,15 @@ export default function HospitalSettings() {
       setPhone(hospitalProfile.phone_number ?? "");
       setEmail(hospitalProfile.email ?? authProfile?.email ?? "");
     } else if (authProfile) {
+      // New account — pre-fill just the email from auth
       setEmail(authProfile.email ?? "");
     }
-  }, [hospitalProfile, authProfile]);
+    setPrefilled(true);
+  }, [isLoading, hospitalProfile, authProfile, prefilled]);
 
+  // After a successful save, allow re-fill from the updated profile
   const handleSave = () => {
+    setPrefilled(false); // will re-fill from refreshed data after mutation
     updateProfile.mutate({
       hospitalName,
       address,
@@ -54,18 +63,6 @@ export default function HospitalSettings() {
     });
   };
 
-  const hasDirtyFields = !isLoading;
-
-  if (isLoading) {
-    return (
-      <DashboardLayout userType="hospital">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout userType="hospital">
       <div className="space-y-6">
@@ -73,18 +70,19 @@ export default function HospitalSettings() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Settings</h1>
-            <p className="text-muted-foreground">Manage your hospital profile and preferences.</p>
+            <p className="text-muted-foreground">
+              {hospitalProfile
+                ? "Update your hospital profile and preferences."
+                : "Complete your hospital profile to get started."}
+            </p>
           </div>
-          <Button
-            onClick={handleSave}
-            disabled={updateProfile.isPending || !hasDirtyFields}
-          >
+          <Button onClick={handleSave} disabled={updateProfile.isPending || isLoading}>
             {updateProfile.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Save Changes
+            {hospitalProfile ? "Save Changes" : "Create Profile"}
           </Button>
         </div>
 
@@ -97,53 +95,63 @@ export default function HospitalSettings() {
               </div>
               <div>
                 <CardTitle>Hospital Profile</CardTitle>
-                <CardDescription>Update your hospital's public information</CardDescription>
+                <CardDescription>
+                  {hospitalProfile
+                    ? "Update your hospital's public information"
+                    : "Enter your hospital's details to create a profile"}
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Label htmlFor="hospitalName">Hospital Name</Label>
-                <div className="relative mt-1">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="hospitalName"
-                    className="pl-10"
-                    placeholder="Enter hospital name"
-                    value={hospitalName}
-                    onChange={(e) => setHospitalName(e.target.value)}
-                  />
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Label htmlFor="hospitalName">Hospital Name</Label>
+                  <div className="relative mt-1">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="hospitalName"
+                      className="pl-10"
+                      placeholder="e.g. City General Hospital"
+                      value={hospitalName}
+                      onChange={(e) => setHospitalName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <div className="relative mt-1">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      className="pl-10"
+                      placeholder="+91 98765 43210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="email">Contact Email</Label>
+                  <div className="relative mt-1">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      className="pl-10"
+                      placeholder="hospital@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <div className="relative mt-1">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    className="pl-10"
-                    placeholder="+91 98765 43210"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative mt-1">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    className="pl-10"
-                    placeholder="hospital@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -156,46 +164,54 @@ export default function HospitalSettings() {
               </div>
               <div>
                 <CardTitle>Location</CardTitle>
-                <CardDescription>Update your hospital's address details</CardDescription>
+                <CardDescription>Your hospital's address details</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="address">Street Address</Label>
-              <div className="relative mt-1">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="address"
-                  className="pl-10"
-                  placeholder="123 Medical Street"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  placeholder="Mumbai"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  placeholder="Maharashtra"
-                  value={stateVal}
-                  onChange={(e) => setStateVal(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-            </div>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="address">Street Address</Label>
+                  <div className="relative mt-1">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="address"
+                      className="pl-10"
+                      placeholder="123 Medical Street"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      placeholder="Mumbai"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      placeholder="Maharashtra"
+                      value={stateVal}
+                      onChange={(e) => setStateVal(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -218,9 +234,9 @@ export default function HospitalSettings() {
             </div>
             <Separator />
             <div className="flex justify-between items-center py-1">
-              <span className="text-sm text-muted-foreground">Hospital Type</span>
-              <span className="text-sm font-medium capitalize">
-                {hospitalProfile?.hospital_type ?? "—"}
+              <span className="text-sm text-muted-foreground">Profile Status</span>
+              <span className={`text-sm font-medium ${hospitalProfile ? "text-green-500" : "text-yellow-500"}`}>
+                {hospitalProfile ? "✓ Profile created" : "⚠ No profile yet — fill the form above"}
               </span>
             </div>
           </CardContent>

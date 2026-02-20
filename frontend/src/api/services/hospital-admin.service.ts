@@ -46,10 +46,10 @@ export interface UpdateHospitalProfileRequest {
 }
 
 export const hospitalAdminService = {
-    async getProfile(): Promise<Hospital> {
+    async getProfile(): Promise<Hospital | null> {
         try {
-            const response = await apiClient.get<ApiResponse<Hospital>>('/hospital/profile');
-            return response.data.data!;
+            const response = await apiClient.get<ApiResponse<Hospital | null>>('/hospital/profile');
+            return response.data.data ?? null;
         } catch (error) {
             throw new Error(handleApiError(error));
         }
