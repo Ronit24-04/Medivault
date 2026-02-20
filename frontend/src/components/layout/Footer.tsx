@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Shield } from "lucide-react";
+import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
 
 export function Footer() {
   return (
@@ -9,9 +9,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2.5 mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                <Shield className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <MediVaultLogoIcon size={32} />
               <span className="text-xl font-semibold tracking-tight">mediVault</span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-[280px]">

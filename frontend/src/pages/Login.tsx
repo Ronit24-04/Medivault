@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
 import { useLogin } from "@/hooks/useAuth";
 
 export default function Login() {
@@ -47,9 +48,7 @@ export default function Login() {
         <div className="w-full max-w-md animate-fade-in">
           {/* Logo of the app */}
           <Link to="/" className="flex items-center gap-2.5 mb-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <Shield className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <MediVaultLogoIcon size={40} />
             <span className="text-2xl font-semibold tracking-tight">mediVault</span>
           </Link>
 
@@ -144,8 +143,8 @@ export default function Login() {
 
       <div className="hidden lg:flex flex-1 bg-primary items-center justify-center p-12">
         <div className="max-w-md text-center text-primary-foreground">
-          <div className="w-24 h-24 mx-auto mb-8 rounded-2xl bg-white/10 flex items-center justify-center">
-            <Shield className="h-12 w-12" />
+          <div className="w-28 h-28 mx-auto mb-8 rounded-2xl bg-white/10 flex items-center justify-center">
+            <MediVaultLogoIcon size={72} />
           </div>
           <h2 className="text-3xl font-bold mb-4">Secure Access</h2>
           <p className="text-lg opacity-90">

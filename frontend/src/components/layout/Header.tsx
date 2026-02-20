@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Menu, Shield, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
 
 const navLinks = [
   { href: "/", label: "Home", isAnchor: false },
@@ -20,9 +21,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <MediVaultLogoIcon size={36} />
           <span className="text-xl font-semibold tracking-tight">mediVault</span>
         </Link>
 

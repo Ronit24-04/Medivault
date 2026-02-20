@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Shield,
   Menu,
   LayoutDashboard,
   FileText,
@@ -25,6 +24,7 @@ import {
   Activity,
   FolderOpen,
 } from "lucide-react";
+import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
 import { useState, useEffect } from "react";
 import { useProfile, useLogout } from "@/hooks/useAuth";
 import { usePatients } from "@/hooks/usePatients";
@@ -113,9 +113,7 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
       <aside className="fixed left-0 top-0 z-40 hidden lg:flex h-screen w-64 flex-col border-r border-border/40 bg-sidebar">
         {/* Logo */}
         <div className="flex h-16 items-center gap-2.5 px-6 border-b border-sidebar-border">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <MediVaultLogoIcon size={36} />
           <span className="text-xl font-semibold tracking-tight">mediVault</span>
         </div>
 
@@ -153,9 +151,7 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
               <div className="flex h-16 items-center gap-2.5 px-6 border-b">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                  <Shield className="h-5 w-5 text-primary-foreground" />
-                </div>
+                <MediVaultLogoIcon size={36} />
                 <span className="text-xl font-semibold tracking-tight">mediVault</span>
               </div>
               <NavContent />
