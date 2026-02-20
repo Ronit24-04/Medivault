@@ -12,6 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Search,
   Filter,
   FileText,
@@ -28,8 +35,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 
-const documents = [
+type Document = {
+  id: number;
+  patientName: string;
+  patientId: string;
+  documentType: string;
+  description: string;
+  uploadDate: string;
+  sharedDate: string;
+  status: string;
+};
+
+const documents: Document[] = [
   {
     id: 1,
     patientName: "John Snow",
@@ -42,7 +61,7 @@ const documents = [
   },
   {
     id: 2,
-    patientName: "Hemant raikar",
+    patientName: "Hemant Raikar",
     patientId: "P-002",
     documentType: "Prescription",
     description: "Monthly medication refill",
@@ -83,9 +102,11 @@ const documents = [
 ];
 
 export default function HospitalDocuments() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [viewDoc, setViewDoc] = useState<Document | null>(null);
 
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch =
@@ -99,10 +120,17 @@ export default function HospitalDocuments() {
     return matchesSearch && matchesType && matchesStatus;
   });
 
+  const handleDownload = (doc: Document) => {
+    toast({
+      title: "Download started",
+      description: `Downloading "${doc.description}" for ${doc.patientName}.`,
+    });
+  };
+
   return (
     <DashboardLayout userType="hospital">
       <div className="space-y-6">
-        {/* Main header */}
+        {/* Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Patient Documents</h1>
           <p className="text-muted-foreground">
@@ -110,7 +138,7 @@ export default function HospitalDocuments() {
           </p>
         </div>
 
-        {/* Use filters */}
+        {/* Filters */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col lg:flex-row gap-4">
@@ -151,7 +179,7 @@ export default function HospitalDocuments() {
           </CardContent>
         </Card>
 
-        {/* Table for documents */}
+        {/* Documents Table */}
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -160,12 +188,8 @@ export default function HospitalDocuments() {
                   <TableRow>
                     <TableHead>Patient</TableHead>
                     <TableHead>Document Type</TableHead>
-                    <TableHead className="hidden md:table-cell">
-                      Description
-                    </TableHead>
-                    <TableHead className="hidden lg:table-cell">
-                      Shared Date
-                    </TableHead>
+                    <TableHead className="hidden md:table-cell">Description</TableHead>
+                    <TableHead className="hidden lg:table-cell">Shared Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -175,14 +199,10 @@ export default function HospitalDocuments() {
                     <TableRow key={doc.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
+                          <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <div>
-                            <span className="font-medium block">
-                              {doc.patientName}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {doc.patientId}
-                            </span>
+                            <span className="font-medium block">{doc.patientName}</span>
+                            <span className="text-xs text-muted-foreground">{doc.patientId}</span>
                           </div>
                         </div>
                       </TableCell>
@@ -199,20 +219,26 @@ export default function HospitalDocuments() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            doc.status === "active" ? "default" : "secondary"
-                          }
-                        >
+                        <Badge variant={doc.status === "active" ? "default" : "secondary"}>
                           {doc.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="View document"
+                            onClick={() => setViewDoc(doc)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Download document"
+                            onClick={() => handleDownload(doc)}
+                          >
                             <Download className="h-4 w-4" />
                           </Button>
                         </div>
@@ -226,17 +252,80 @@ export default function HospitalDocuments() {
             {filteredDocuments.length === 0 && (
               <div className="py-12 text-center">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No documents found
-                </h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search or filters.
-                </p>
+                <h3 className="text-lg font-semibold mb-2">No documents found</h3>
+                <p className="text-muted-foreground">Try adjusting your search or filters.</p>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Document View Modal */}
+      <Dialog open={!!viewDoc} onOpenChange={(open) => !open && setViewDoc(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Document Details</DialogTitle>
+            <DialogDescription>
+              Shared by {viewDoc?.patientName} ({viewDoc?.patientId})
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewDoc && (
+            <div className="space-y-4 mt-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Document Type</p>
+                  <Badge variant="outline">{viewDoc.documentType}</Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Status</p>
+                  <Badge variant={viewDoc.status === "active" ? "default" : "secondary"}>
+                    {viewDoc.status}
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Description</p>
+                <p className="text-sm font-medium">{viewDoc.description}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Upload Date</p>
+                  <div className="flex items-center gap-1 text-sm">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    {viewDoc.uploadDate}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Shared Date</p>
+                  <div className="flex items-center gap-1 text-sm">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    {viewDoc.sharedDate}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    handleDownload(viewDoc);
+                    setViewDoc(null);
+                  }}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+                <Button variant="outline" onClick={() => setViewDoc(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

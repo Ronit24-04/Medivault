@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -13,26 +14,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Building2,
-  Bell,
-  Lock,
-  Shield,
-  Globe,
-  Clock,
-  Users,
-} from "lucide-react";
+import { Building2, Bell, Shield, Globe, Clock, Users, Save } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function HospitalSettings() {
+  const { toast } = useToast();
+
+  // Hospital Profile state
+  const [hospitalName, setHospitalName] = useState("City General Hospital");
+  const [contactEmail, setContactEmail] = useState("contact@cityhospital.com");
+  const [contactPhone, setContactPhone] = useState("+1 (555) 000-0000");
+  const [address, setAddress] = useState("123 Medical Center Drive, New York, NY 10001");
+  const [description, setDescription] = useState(
+    "City General Hospital is a leading healthcare facility providing comprehensive medical services since 1985."
+  );
+
+  // Operating hours state
+  const [weekdayStart, setWeekdayStart] = useState("08:00");
+  const [weekdayEnd, setWeekdayEnd] = useState("20:00");
+  const [weekendStart, setWeekendStart] = useState("09:00");
+  const [weekendEnd, setWeekendEnd] = useState("17:00");
+  const [emergency247, setEmergency247] = useState(true);
+
+  // Notifications state
+  const [notifyAccessRequests, setNotifyAccessRequests] = useState(true);
+  const [notifyNewUploads, setNotifyNewUploads] = useState(true);
+  const [notifyDailySummary, setNotifyDailySummary] = useState(false);
+
+  // Access Control state
+  const [defaultRole, setDefaultRole] = useState("viewer");
+  const [requireManagerApproval, setRequireManagerApproval] = useState(true);
+  const [autoRevokeInactive, setAutoRevokeInactive] = useState(false);
+
+  // Security state
+  const [require2FA, setRequire2FA] = useState(true);
+  const [sessionTimeout, setSessionTimeout] = useState("30");
+
+  const handleSave = () => {
+    toast({
+      title: "Settings saved",
+      description: "Your hospital settings have been updated successfully.",
+    });
+  };
+
   return (
     <DashboardLayout userType="hospital">
       <div className="space-y-6 max-w-4xl">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">
-            Manage hospital preferences and configurations.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Settings</h1>
+            <p className="text-muted-foreground">
+              Manage hospital preferences and configurations.
+            </p>
+          </div>
+          <Button size="lg" onClick={handleSave} className="self-start sm:self-auto">
+            <Save className="mr-2 h-4 w-4" />
+            Save Changes
+          </Button>
         </div>
 
         {/* Hospital profile */}
@@ -42,38 +81,50 @@ export default function HospitalSettings() {
               <Building2 className="h-5 w-5" />
               Hospital Profile
             </CardTitle>
-            <CardDescription>
-              Update your hospital's public information.
-            </CardDescription>
+            <CardDescription>Update your hospital's public information.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="hospitalName">Hospital Name</Label>
-              <Input id="hospitalName" defaultValue="City General Hospital" />
+              <Input
+                id="hospitalName"
+                value={hospitalName}
+                onChange={(e) => setHospitalName(e.target.value)}
+              />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Contact Email</Label>
-                <Input id="email" type="email" defaultValue="contact@cityhospital.com" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Contact Phone</Label>
-                <Input id="phone" defaultValue="+1 (555) 000-0000" />
+                <Input
+                  id="phone"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
               <Textarea
                 id="address"
-                defaultValue="123 Medical Center Drive, New York, NY 10001"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Brief description of your hospital..."
-                defaultValue="City General Hospital is a leading healthcare facility providing comprehensive medical services since 1985."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
           </CardContent>
@@ -91,18 +142,34 @@ export default function HospitalSettings() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Weekday Hours</Label>
-                <div className="flex gap-2">
-                  <Input type="time" defaultValue="08:00" />
-                  <span className="flex items-center">to</span>
-                  <Input type="time" defaultValue="20:00" />
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="time"
+                    value={weekdayStart}
+                    onChange={(e) => setWeekdayStart(e.target.value)}
+                  />
+                  <span className="text-muted-foreground text-sm flex-shrink-0">to</span>
+                  <Input
+                    type="time"
+                    value={weekdayEnd}
+                    onChange={(e) => setWeekdayEnd(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Weekend Hours</Label>
-                <div className="flex gap-2">
-                  <Input type="time" defaultValue="09:00" />
-                  <span className="flex items-center">to</span>
-                  <Input type="time" defaultValue="17:00" />
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="time"
+                    value={weekendStart}
+                    onChange={(e) => setWeekendStart(e.target.value)}
+                  />
+                  <span className="text-muted-foreground text-sm flex-shrink-0">to</span>
+                  <Input
+                    type="time"
+                    value={weekendEnd}
+                    onChange={(e) => setWeekendEnd(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -113,7 +180,7 @@ export default function HospitalSettings() {
                   Emergency department available around the clock.
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch checked={emergency247} onCheckedChange={setEmergency247} />
             </div>
           </CardContent>
         </Card>
@@ -125,9 +192,7 @@ export default function HospitalSettings() {
               <Bell className="h-5 w-5" />
               Notifications
             </CardTitle>
-            <CardDescription>
-              Configure notification preferences for staff.
-            </CardDescription>
+            <CardDescription>Configure notification preferences for staff.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
@@ -137,7 +202,7 @@ export default function HospitalSettings() {
                   Notify when patients grant record access.
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch checked={notifyAccessRequests} onCheckedChange={setNotifyAccessRequests} />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -147,7 +212,7 @@ export default function HospitalSettings() {
                   Notify when patients upload new records.
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch checked={notifyNewUploads} onCheckedChange={setNotifyNewUploads} />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -157,31 +222,29 @@ export default function HospitalSettings() {
                   Receive daily email summary of activities.
                 </p>
               </div>
-              <Switch />
+              <Switch checked={notifyDailySummary} onCheckedChange={setNotifyDailySummary} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Access control */}
+        {/* Access Control */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5" />
               Access Control
             </CardTitle>
-            <CardDescription>
-              Manage staff permissions and access levels.
-            </CardDescription>
+            <CardDescription>Manage staff permissions and access levels.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
                 <p className="font-medium">Default Staff Role</p>
                 <p className="text-sm text-muted-foreground">
                   Role assigned to new staff members.
                 </p>
               </div>
-              <Select defaultValue="viewer">
+              <Select value={defaultRole} onValueChange={setDefaultRole}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -200,7 +263,7 @@ export default function HospitalSettings() {
                   New access requests need manager approval.
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch checked={requireManagerApproval} onCheckedChange={setRequireManagerApproval} />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -210,12 +273,12 @@ export default function HospitalSettings() {
                   Automatically revoke access after inactivity.
                 </p>
               </div>
-              <Switch />
+              <Switch checked={autoRevokeInactive} onCheckedChange={setAutoRevokeInactive} />
             </div>
           </CardContent>
         </Card>
 
-        {/* For security */}
+        {/* Security */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -231,17 +294,17 @@ export default function HospitalSettings() {
                   Require 2FA for all staff accounts.
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch checked={require2FA} onCheckedChange={setRequire2FA} />
             </div>
             <Separator />
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
                 <p className="font-medium">Session Timeout</p>
                 <p className="text-sm text-muted-foreground">
                   Auto-logout after inactivity period.
                 </p>
               </div>
-              <Select defaultValue="30">
+              <Select value={sessionTimeout} onValueChange={setSessionTimeout}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -278,9 +341,7 @@ export default function HospitalSettings() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">EHR System</p>
-                <p className="text-sm text-muted-foreground">
-                  Connect to external EHR systems.
-                </p>
+                <p className="text-sm text-muted-foreground">Connect to external EHR systems.</p>
               </div>
               <Button variant="outline">Connect</Button>
             </div>
@@ -307,9 +368,12 @@ export default function HospitalSettings() {
           </CardContent>
         </Card>
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <Button size="lg">Save Changes</Button>
+        {/* Bottom Save Button */}
+        <div className="flex justify-end pb-4">
+          <Button size="lg" onClick={handleSave}>
+            <Save className="mr-2 h-4 w-4" />
+            Save Changes
+          </Button>
         </div>
       </div>
     </DashboardLayout>

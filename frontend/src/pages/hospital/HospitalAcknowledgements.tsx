@@ -12,6 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Search,
   Filter,
   CheckCircle,
@@ -31,7 +38,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const acknowledgements = [
+type AckStatus = "pending" | "acknowledged" | "rejected";
+
+type Acknowledgement = {
+  id: number;
+  patientName: string;
+  patientId: string;
+  documentType: string;
+  description: string;
+  receivedDate: string;
+  status: AckStatus;
+  priority: string;
+};
+
+const initialAcknowledgements: Acknowledgement[] = [
   {
     id: 1,
     patientName: "Ronit Mahale",
@@ -85,48 +105,68 @@ const acknowledgements = [
 ];
 
 export default function HospitalAcknowledgements() {
+  const [items, setItems] = useState<Acknowledgement[]>(initialAcknowledgements);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    id: number | null;
+    action: "acknowledged" | "rejected" | null;
+    patientName: string;
+  }>({ open: false, id: null, action: null, patientName: "" });
 
-  const filteredAcknowledgements = acknowledgements.filter((item) => {
+  const handleAction = (id: number, action: AckStatus, patientName: string) => {
+    if (action === "acknowledged" || action === "rejected") {
+      setConfirmDialog({ open: true, id, action, patientName });
+    }
+  };
+
+  const confirmAction = () => {
+    if (confirmDialog.id !== null && confirmDialog.action) {
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === confirmDialog.id
+            ? { ...item, status: confirmDialog.action as AckStatus }
+            : item
+        )
+      );
+    }
+    setConfirmDialog({ open: false, id: null, action: null, patientName: "" });
+  };
+
+  const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.patientId.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || item.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || item.priority === priorityFilter;
+    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+    const matchesPriority = priorityFilter === "all" || item.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const pendingCount = acknowledgements.filter(
-    (a) => a.status === "pending"
-  ).length;
-  const acknowledgedCount = acknowledgements.filter(
-    (a) => a.status === "acknowledged"
-  ).length;
+  const pendingCount = items.filter((a) => a.status === "pending").length;
+  const acknowledgedCount = items.filter((a) => a.status === "acknowledged").length;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
         return (
-          <Badge variant="secondary" className="gap-1">
+          <Badge variant="secondary" className="gap-1 whitespace-nowrap">
             <Clock className="h-3 w-3" />
             Pending
           </Badge>
         );
       case "acknowledged":
         return (
-          <Badge variant="default" className="gap-1 bg-success text-success-foreground">
+          <Badge variant="default" className="gap-1 bg-success text-success-foreground whitespace-nowrap">
             <CheckCircle className="h-3 w-3" />
             Acknowledged
           </Badge>
         );
       case "rejected":
         return (
-          <Badge variant="destructive" className="gap-1">
+          <Badge variant="destructive" className="gap-1 whitespace-nowrap">
             <X className="h-3 w-3" />
             Rejected
           </Badge>
@@ -165,7 +205,7 @@ export default function HospitalAcknowledgements() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Acknowledged Today
+                Acknowledged
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -184,15 +224,13 @@ export default function HospitalAcknowledgements() {
             <CardContent>
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold">
-                  {acknowledgements.length}
-                </span>
+                <span className="text-2xl font-bold">{items.length}</span>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Use filters */}
+        {/* Filters */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col lg:flex-row gap-4">
@@ -231,7 +269,7 @@ export default function HospitalAcknowledgements() {
           </CardContent>
         </Card>
 
-        {/* Table for acknowledgements */}
+        {/* Table */}
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -240,35 +278,27 @@ export default function HospitalAcknowledgements() {
                   <TableRow>
                     <TableHead>Patient</TableHead>
                     <TableHead>Document</TableHead>
-                    <TableHead className="hidden md:table-cell">
-                      Received
-                    </TableHead>
+                    <TableHead className="hidden md:table-cell">Received</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAcknowledgements.map((item) => (
+                  {filteredItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
+                          <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <div>
-                            <span className="font-medium block">
-                              {item.patientName}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {item.patientId}
-                            </span>
+                            <span className="font-medium block">{item.patientName}</span>
+                            <span className="text-xs text-muted-foreground">{item.patientId}</span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <Badge variant="outline" className="mb-1">
-                            {item.documentType}
-                          </Badge>
+                          <Badge variant="outline" className="mb-1">{item.documentType}</Badge>
                           <p className="text-sm text-muted-foreground truncate max-w-[150px]">
                             {item.description}
                           </p>
@@ -281,13 +311,7 @@ export default function HospitalAcknowledgements() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            item.priority === "high"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
+                        <Badge variant={item.priority === "high" ? "destructive" : "secondary"}>
                           {item.priority}
                         </Badge>
                       </TableCell>
@@ -298,18 +322,25 @@ export default function HospitalAcknowledgements() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              title="Acknowledge"
                               className="text-success hover:text-success hover:bg-success/10"
+                              onClick={() => handleAction(item.id, "acknowledged", item.patientName)}
                             >
                               <Check className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
+                              title="Reject"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleAction(item.id, "rejected", item.patientName)}
                             >
                               <X className="h-4 w-4" />
                             </Button>
                           </div>
+                        )}
+                        {item.status !== "pending" && (
+                          <span className="text-xs text-muted-foreground pr-2">—</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -318,20 +349,63 @@ export default function HospitalAcknowledgements() {
               </Table>
             </div>
 
-            {filteredAcknowledgements.length === 0 && (
+            {filteredItems.length === 0 && (
               <div className="py-12 text-center">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No documents found
-                </h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search or filters.
-                </p>
+                <h3 className="text-lg font-semibold mb-2">No documents found</h3>
+                <p className="text-muted-foreground">Try adjusting your search or filters.</p>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onOpenChange={(open) =>
+          !open && setConfirmDialog({ open: false, id: null, action: null, patientName: "" })
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmDialog.action === "acknowledged" ? "Acknowledge Document" : "Reject Document"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmDialog.action === "acknowledged"
+                ? `Are you sure you want to acknowledge the document from ${confirmDialog.patientName}?`
+                : `Are you sure you want to reject the document from ${confirmDialog.patientName}? This action cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                setConfirmDialog({ open: false, id: null, action: null, patientName: "" })
+              }
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={confirmDialog.action === "rejected" ? "destructive" : "default"}
+              onClick={confirmAction}
+            >
+              {confirmDialog.action === "acknowledged" ? (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Acknowledge
+                </>
+              ) : (
+                <>
+                  <X className="mr-2 h-4 w-4" />
+                  Reject
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

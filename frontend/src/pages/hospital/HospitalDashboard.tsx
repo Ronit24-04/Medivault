@@ -7,12 +7,11 @@ import { Link } from "react-router-dom";
 import {
   Users,
   FileText,
-  Calendar,
   Activity,
   ArrowRight,
   TrendingUp,
-  Clock,
-  UserPlus,
+  Bell,
+  FolderOpen,
   Eye,
   Loader2,
   AlertCircle,
@@ -22,7 +21,6 @@ import { useRecords } from "@/hooks/useRecords";
 import { useProfile } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
-// Helper function to format date
 const formatDate = (dateString: string) => {
   try {
     return format(new Date(dateString), "MMM d, yyyy");
@@ -31,7 +29,6 @@ const formatDate = (dateString: string) => {
   }
 };
 
-// Helper function to calculate age from date of birth
 const calculateAge = (dob?: string) => {
   if (!dob) return null;
   try {
@@ -62,46 +59,37 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function HospitalDashboard() {
-  // Fetch user profile data
   const { data: profile } = useProfile();
-
-  // Fetch patients data
   const { data: patients, isLoading: patientsLoading, error: patientsError } = usePatients();
-
-  // Get all records count (we'll fetch for first patient as example)
   const firstPatientId = patients?.[0]?.patient_id;
   const { data: records } = useRecords(firstPatientId || 0);
-
-  // Get hospital/user name for display
   const hospitalName = profile?.email || "Hospital";
 
-  // Calculate stats from real data
   const stats = [
     {
       label: "Total Patients",
       value: patients?.length?.toString() || "0",
       change: "+0%",
       icon: Users,
-      trend: "up"
+      trend: "up",
     },
     {
       label: "Records Accessed",
       value: records?.length?.toString() || "0",
       change: "+0%",
       icon: FileText,
-      trend: "up"
+      trend: "up",
     },
     {
       label: "Active Sessions",
       value: patients?.length?.toString() || "0",
       change: "+0",
       icon: Activity,
-      trend: "up"
+      trend: "up",
     },
   ];
 
-  // Get recent patients (last 4)
-  const recentPatients = patients?.slice(0, 4).map(patient => {
+  const recentPatients = patients?.slice(0, 4).map((patient) => {
     const age = calculateAge(patient.date_of_birth);
     return {
       id: patient.patient_id,
@@ -113,9 +101,6 @@ export default function HospitalDashboard() {
     };
   }) || [];
 
-
-
-  // Loading state
   if (patientsLoading) {
     return (
       <DashboardLayout userType="hospital">
@@ -129,7 +114,6 @@ export default function HospitalDashboard() {
     );
   }
 
-  // Error state
   if (patientsError) {
     return (
       <DashboardLayout userType="hospital">
@@ -154,12 +138,6 @@ export default function HospitalDashboard() {
             <h1 className="text-2xl md:text-3xl font-bold">Hospital Dashboard</h1>
             <p className="text-muted-foreground">Welcome back, {hospitalName}</p>
           </div>
-          <Button asChild>
-            <Link to="/hospital/patients">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add Patient
-            </Link>
-          </Button>
         </div>
 
         {/* Stats Grid */}
@@ -172,8 +150,10 @@ export default function HospitalDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
                     <p className="text-2xl md:text-3xl font-bold">{stat.value}</p>
-                    <div className={`flex items-center gap-1 text-sm mt-1 ${stat.trend === "up" ? "text-success" : "text-destructive"
-                      }`}>
+                    <div
+                      className={`flex items-center gap-1 text-sm mt-1 ${stat.trend === "up" ? "text-success" : "text-destructive"
+                        }`}
+                    >
                       <TrendingUp className={`h-3 w-3 ${stat.trend === "down" ? "rotate-180" : ""}`} />
                       {stat.change}
                     </div>
@@ -195,7 +175,7 @@ export default function HospitalDashboard() {
               <CardDescription>Patients with recent activity</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/hospital/patients">
+              <Link to="/hospital/documents">
                 View All
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
@@ -225,8 +205,10 @@ export default function HospitalDashboard() {
                     </p>
                   </div>
                   {getStatusBadge(patient.status)}
-                  <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Eye className="h-4 w-4" />
+                  <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100 transition-opacity" asChild>
+                    <Link to="/hospital/documents">
+                      <Eye className="h-4 w-4" />
+                    </Link>
                   </Button>
                 </div>
               ))
@@ -234,16 +216,13 @@ export default function HospitalDashboard() {
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
                 <p>No patients yet</p>
-                <Button variant="link" asChild className="mt-2">
-                  <Link to="/hospital/patients">Add your first patient</Link>
-                </Button>
+                <p className="text-sm mt-1">Patients will appear here once they share records with you.</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-
-        {/* Most used functions as quick actions */}
+        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
@@ -251,31 +230,31 @@ export default function HospitalDashboard() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <Link
-                to="/hospital/patients"
+                to="/hospital/documents"
                 className="flex flex-col items-center gap-3 p-6 rounded-xl border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group"
               >
                 <div className="icon-container-lg group-hover:scale-110 transition-transform">
-                  <Users className="h-6 w-6" />
+                  <FolderOpen className="h-6 w-6" />
                 </div>
-                <span className="text-sm font-medium">View Patients</span>
+                <span className="text-sm font-medium text-center">Patient Documents</span>
               </Link>
               <Link
-                to="/hospital/records"
+                to="/hospital/acknowledgements"
                 className="flex flex-col items-center gap-3 p-6 rounded-xl border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group"
               >
                 <div className="icon-container-lg group-hover:scale-110 transition-transform">
                   <FileText className="h-6 w-6" />
                 </div>
-                <span className="text-sm font-medium">Access Records</span>
+                <span className="text-sm font-medium text-center">Acknowledgements</span>
               </Link>
               <Link
-                to="/hospital/analytics"
-                className="flex flex-col items-center gap-3 p-6 rounded-xl border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                to="/hospital/alerts"
+                className="col-span-2 md:col-span-1 flex flex-col items-center gap-3 p-6 rounded-xl border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group"
               >
                 <div className="icon-container-lg group-hover:scale-110 transition-transform">
-                  <Activity className="h-6 w-6" />
+                  <Bell className="h-6 w-6" />
                 </div>
-                <span className="text-sm font-medium">Analytics</span>
+                <span className="text-sm font-medium text-center">Alerts</span>
               </Link>
             </div>
           </CardContent>

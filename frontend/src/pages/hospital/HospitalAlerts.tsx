@@ -20,11 +20,22 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
-  Eye,
   Check,
 } from "lucide-react";
 
-const alerts = [
+type Alert = {
+  id: number;
+  type: string;
+  patientName: string;
+  patientId: string;
+  message: string;
+  description: string;
+  timestamp: string;
+  isRead: boolean;
+  priority: string;
+};
+
+const initialAlerts: Alert[] = [
   {
     id: 1,
     type: "new_document",
@@ -94,9 +105,20 @@ const alerts = [
 ];
 
 export default function HospitalAlerts() {
+  const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [readFilter, setReadFilter] = useState("all");
+
+  const markAsRead = (id: number) => {
+    setAlerts((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, isRead: true } : a))
+    );
+  };
+
+  const markAllAsRead = () => {
+    setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })));
+  };
 
   const filteredAlerts = alerts.filter((alert) => {
     const matchesSearch =
@@ -133,16 +155,11 @@ export default function HospitalAlerts() {
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case "new_document":
-        return "New Document";
-      case "access_request":
-        return "Access Request";
-      case "expiring_access":
-        return "Expiring Access";
-      case "access_granted":
-        return "Access Granted";
-      default:
-        return type;
+      case "new_document": return "New Document";
+      case "access_request": return "Access Request";
+      case "expiring_access": return "Expiring Access";
+      case "access_granted": return "Access Granted";
+      default: return type;
     }
   };
 
@@ -157,7 +174,12 @@ export default function HospitalAlerts() {
               Stay updated with patient document notifications.
             </p>
           </div>
-          <Button variant="outline" className="self-start">
+          <Button
+            variant="outline"
+            className="self-start"
+            onClick={markAllAsRead}
+            disabled={unreadCount === 0}
+          >
             <Check className="mr-2 h-4 w-4" />
             Mark All as Read
           </Button>
@@ -206,7 +228,7 @@ export default function HospitalAlerts() {
           </Card>
         </div>
 
-        {/* Use filters */}
+        {/* Filters */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col lg:flex-row gap-4">
@@ -227,9 +249,7 @@ export default function HospitalAlerts() {
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="new_document">New Document</SelectItem>
                   <SelectItem value="access_request">Access Request</SelectItem>
-                  <SelectItem value="expiring_access">
-                    Expiring Access
-                  </SelectItem>
+                  <SelectItem value="expiring_access">Expiring Access</SelectItem>
                   <SelectItem value="access_granted">Access Granted</SelectItem>
                 </SelectContent>
               </Select>
@@ -252,9 +272,8 @@ export default function HospitalAlerts() {
           {filteredAlerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`transition-colors ${
-                !alert.isRead ? "border-primary/30 bg-primary/5" : ""
-              }`}
+              className={`transition-colors ${!alert.isRead ? "border-primary/30 bg-primary/5" : ""
+                }`}
             >
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
@@ -262,12 +281,12 @@ export default function HospitalAlerts() {
                     {getAlertIcon(alert.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold">{alert.message}</h3>
                           {!alert.isRead && (
-                            <span className="w-2 h-2 rounded-full bg-primary" />
+                            <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
                           )}
                           {alert.priority === "high" && (
                             <Badge variant="destructive" className="text-xs">
@@ -278,7 +297,7 @@ export default function HospitalAlerts() {
                         <p className="text-sm text-muted-foreground mt-1">
                           {alert.description}
                         </p>
-                        <div className="flex items-center gap-4 mt-2">
+                        <div className="flex flex-wrap items-center gap-3 mt-2">
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <User className="h-3 w-3" />
                             {alert.patientName} ({alert.patientId})
@@ -290,12 +309,17 @@ export default function HospitalAlerts() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge variant="outline">
-                          {getTypeLabel(alert.type)}
-                        </Badge>
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Badge variant="outline">{getTypeLabel(alert.type)}</Badge>
+                        {!alert.isRead && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => markAsRead(alert.id)}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Mark Read
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
