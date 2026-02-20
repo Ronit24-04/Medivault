@@ -1,0 +1,58 @@
+import { Response, NextFunction } from 'express';
+import { hospitalAdminService } from './hospital-admin.service';
+import { AuthRequest } from '../../middleware/auth.middleware';
+
+export class HospitalAdminController {
+    async getProfile(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const profile = await hospitalAdminService.getProfile(adminId);
+            res.json({ success: true, data: profile });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async updateProfile(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const profile = await hospitalAdminService.updateProfile(adminId, req.body);
+            res.json({ success: true, data: profile });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getSharedRecords(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const records = await hospitalAdminService.getSharedRecords(adminId);
+            res.json({ success: true, data: records });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getAlerts(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const alerts = await hospitalAdminService.getAlerts(adminId);
+            res.json({ success: true, data: alerts });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async acknowledgeAlert(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const alertId = parseInt(req.params.alertId as string, 10);
+            const alert = await hospitalAdminService.acknowledgeAlert(adminId, alertId);
+            res.json({ success: true, data: alert });
+        } catch (error) {
+            next(error);
+        }
+    }
+}
+
+export const hospitalAdminController = new HospitalAdminController();

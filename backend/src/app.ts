@@ -14,6 +14,7 @@ import recordsRoutes from './modules/medical-records/records.routes';
 import emergencyRoutes from './modules/emergency/emergency.routes';
 import hospitalsRoutes from './modules/hospitals/hospitals.routes';
 import sharedAccessRoutes from './modules/shared-access/shared-access.routes';
+import hospitalAdminRoutes from './modules/hospitals/hospital-admin.routes';
 
 const app: Application = express();
 
@@ -50,6 +51,7 @@ app.use('/api/patients', recordsRoutes);
 app.use('/api/patients', sharedAccessRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/hospitals', hospitalsRoutes);
+app.use('/api/hospital', hospitalAdminRoutes);
 
 // 404 handler
 app.use(notFound);

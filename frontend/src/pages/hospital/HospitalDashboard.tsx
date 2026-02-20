@@ -16,12 +16,12 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { usePatients } from "@/hooks/usePatients";
-import { useRecords } from "@/hooks/useRecords";
 import { useProfile } from "@/hooks/useAuth";
+import { useHospitalProfile, useHospitalSharedRecords, useHospitalAlerts } from "@/hooks/useHospital";
 import { format } from "date-fns";
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string) => {
+  if (!dateString) return "—";
   try {
     return format(new Date(dateString), "MMM d, yyyy");
   } catch {
@@ -29,79 +29,45 @@ const formatDate = (dateString: string) => {
   }
 };
 
-const calculateAge = (dob?: string) => {
-  if (!dob) return null;
-  try {
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  } catch {
-    return null;
-  }
-};
-
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "active":
-      return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
-    case "completed":
-      return <Badge className="bg-muted text-muted-foreground">Completed</Badge>;
-    case "pending":
-      return <Badge className="bg-warning/10 text-warning border-warning/20">Pending</Badge>;
-    default:
-      return null;
-  }
-};
-
 export default function HospitalDashboard() {
-  const { data: profile } = useProfile();
-  const { data: patients, isLoading: patientsLoading, error: patientsError } = usePatients();
-  const firstPatientId = patients?.[0]?.patient_id;
-  const { data: records } = useRecords(firstPatientId || 0);
-  const hospitalName = profile?.email || "Hospital";
+  const { data: authProfile } = useProfile();
+  const { data: hospitalProfile, isLoading: profileLoading } = useHospitalProfile();
+  const { data: sharedRecords, isLoading: recordsLoading } = useHospitalSharedRecords();
+  const { data: alerts } = useHospitalAlerts();
+
+  const isLoading = profileLoading || recordsLoading;
+
+  const hospitalName = hospitalProfile?.hospital_name || authProfile?.email || "Hospital";
+  const activeRecords = sharedRecords?.filter((r) => r.status === "active") ?? [];
+  const pendingAlerts = alerts?.filter((a) => a.status === "sent") ?? [];
+  const uniquePatients = new Set(sharedRecords?.map((r) => r.patient_id)).size;
 
   const stats = [
     {
       label: "Total Patients",
-      value: patients?.length?.toString() || "0",
-      change: "+0%",
+      value: uniquePatients.toString(),
       icon: Users,
-      trend: "up",
     },
     {
-      label: "Records Accessed",
-      value: records?.length?.toString() || "0",
-      change: "+0%",
+      label: "Active Records",
+      value: activeRecords.length.toString(),
       icon: FileText,
-      trend: "up",
     },
     {
-      label: "Active Sessions",
-      value: patients?.length?.toString() || "0",
-      change: "+0",
+      label: "Pending Alerts",
+      value: pendingAlerts.length.toString(),
       icon: Activity,
-      trend: "up",
     },
   ];
 
-  const recentPatients = patients?.slice(0, 4).map((patient) => {
-    const age = calculateAge(patient.date_of_birth);
-    return {
-      id: patient.patient_id,
-      name: patient.full_name,
-      age: age || 0,
-      lastVisit: formatDate(patient.updated_at),
-      condition: patient.relationship || "Patient",
-      status: "active",
-    };
-  }) || [];
+  const recentPatients = sharedRecords?.slice(0, 4).map((record) => ({
+    id: record.patient_id,
+    name: record.patient.full_name,
+    lastVisit: formatDate(record.shared_on),
+    status: record.status,
+  })) ?? [];
 
-  if (patientsLoading) {
+  if (isLoading) {
     return (
       <DashboardLayout userType="hospital">
         <div className="flex items-center justify-center h-64">
@@ -114,25 +80,10 @@ export default function HospitalDashboard() {
     );
   }
 
-  if (patientsError) {
-    return (
-      <DashboardLayout userType="hospital">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <AlertCircle className="h-8 w-8 mx-auto mb-4 text-destructive" />
-            <p className="text-muted-foreground">
-              {patientsError.message || "Failed to load dashboard"}
-            </p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout userType="hospital">
       <div className="space-y-6">
-        {/* Main header */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Hospital Dashboard</h1>
@@ -150,12 +101,9 @@ export default function HospitalDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
                     <p className="text-2xl md:text-3xl font-bold">{stat.value}</p>
-                    <div
-                      className={`flex items-center gap-1 text-sm mt-1 ${stat.trend === "up" ? "text-success" : "text-destructive"
-                        }`}
-                    >
-                      <TrendingUp className={`h-3 w-3 ${stat.trend === "down" ? "rotate-180" : ""}`} />
-                      {stat.change}
+                    <div className="flex items-center gap-1 text-sm mt-1 text-success">
+                      <TrendingUp className="h-3 w-3" />
+                      Live
                     </div>
                   </div>
                   <div className="icon-container">
@@ -171,13 +119,12 @@ export default function HospitalDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Recent Patients</CardTitle>
-              <CardDescription>Patients with recent activity</CardDescription>
+              <CardTitle>Recent Shared Records</CardTitle>
+              <CardDescription>Patients who recently shared access with you</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/hospital/documents">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
+                View All <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </CardHeader>
@@ -190,22 +137,22 @@ export default function HospitalDashboard() {
                 >
                   <Avatar className="h-10 w-10">
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {patient.name.split(" ").map((n) => n[0]).join("")}
+                      {patient.name.split(" ").map((n: string) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{patient.name}</p>
-                      {patient.age > 0 && (
-                        <span className="text-sm text-muted-foreground">• {patient.age}y</span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {patient.condition} • {patient.lastVisit}
-                    </p>
+                    <p className="font-medium">{patient.name}</p>
+                    <p className="text-sm text-muted-foreground">Shared {patient.lastVisit}</p>
                   </div>
-                  {getStatusBadge(patient.status)}
-                  <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100 transition-opacity" asChild>
+                  <Badge variant={patient.status === "active" ? "default" : "secondary"}>
+                    {patient.status}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    asChild
+                  >
                     <Link to="/hospital/documents">
                       <Eye className="h-4 w-4" />
                     </Link>
@@ -215,12 +162,32 @@ export default function HospitalDashboard() {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p>No patients yet</p>
-                <p className="text-sm mt-1">Patients will appear here once they share records with you.</p>
+                <p className="font-medium">No shared records yet</p>
+                <p className="text-sm mt-1">
+                  Patients will appear here once they share records with your hospital.
+                </p>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Alerts Summary Banner */}
+        {pendingAlerts.length > 0 && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <p className="font-medium">
+                  {pendingAlerts.length} pending emergency alert
+                  {pendingAlerts.length > 1 ? "s" : ""} require attention
+                </p>
+              </div>
+              <Button variant="destructive" size="sm" asChild>
+                <Link to="/hospital/alerts">View Alerts</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Actions */}
         <Card>
