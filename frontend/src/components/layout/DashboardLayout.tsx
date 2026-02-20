@@ -28,6 +28,7 @@ import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
 import { useState, useEffect } from "react";
 import { useProfile, useLogout } from "@/hooks/useAuth";
 import { usePatients } from "@/hooks/usePatients";
+import { useHospitalProfile } from "@/hooks/useHospital";
 import { ProfileSwitcher } from "@/components/profile/ProfileSwitcher";
 
 interface DashboardLayoutProps {
@@ -78,10 +79,13 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
   // Get primary patient for patient users
   const primaryPatient = patients?.find(p => p.is_primary) || patients?.[0];
 
+  // For hospital users, fetch the hospital profile name from Settings
+  const { data: hospitalProfile } = useHospitalProfile();
+
   const navItems = userType === "patient" ? patientNavItems : hospitalNavItems;
   const userName = userType === "patient"
     ? (primaryPatient?.full_name || "User")
-    : (profile?.email?.split('@')[0] || "Hospital");
+    : (hospitalProfile?.hospital_name || profile?.email || "Hospital");
   const userEmail = profile?.email || "user@email.com";
 
   const NavContent = () => (
