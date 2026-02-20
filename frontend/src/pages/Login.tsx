@@ -14,6 +14,7 @@ export default function Login() {
   const [userType, setUserType] = useState<"patient" | "hospital">("patient");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showEmergency, setShowEmergency] = useState(false);
 
   const loginMutation = useLogin();
 
@@ -25,6 +26,7 @@ export default function Login() {
         email,
         password,
       });
+      console.log("LOGIN RESULT 👉", result);
 
       // Navigate based on user type from the response
       const userType = result.admin.user_type.toUpperCase();
@@ -44,7 +46,14 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
+      <div className="flex-1 relative flex items-center justify-center p-6 md:p-12">
+          {/* 🚨 Emergency Floating Button */}
+<button
+  onClick={() => setShowEmergency(true)}
+  className="absolute top-6 right-6 z-50 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition"
+>
+  🚨 Emergency
+</button>
         <div className="w-full max-w-md animate-fade-in">
           {/* Logo of the app */}
           <Link to="/" className="flex items-center gap-2.5 mb-8">
@@ -64,7 +73,13 @@ export default function Login() {
             </TabsList>
           </Tabs>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form
+  onSubmit={(e) => {
+    console.log("🔥 FORM SUBMITTED");
+    handleSubmit(e);
+  }}
+  className="space-y-5"
+>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -152,6 +167,43 @@ export default function Login() {
           </p>
         </div>
       </div>
+      {/* Emergency Modal */}
+{showEmergency && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-xl w-[400px] shadow-xl">
+      <h2 className="text-xl font-semibold mb-4 text-red-600">
+        Emergency Information
+      </h2>
+
+      <p><b>Name:</b> John Doe</p>
+      <p><b>Age:</b> 34</p>
+      <p><b>Blood Group:</b> O+</p>
+      <p className="text-red-500 font-medium">
+        Allergy: Penicillin
+      </p>
+
+      <div className="mt-5 flex gap-3">
+  {/* 🚨 Send Alert Button */}
+  <button
+    onClick={() => {
+      alert("Emergency Alert Sent 🚑");
+    }}
+    className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
+  >
+    Send Alert
+  </button>
+
+  {/* Close Button */}
+  <button
+    onClick={() => setShowEmergency(false)}
+    className="flex-1 bg-gray-900 text-white py-2 rounded-lg"
+  >
+    Close
+  </button>
+</div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

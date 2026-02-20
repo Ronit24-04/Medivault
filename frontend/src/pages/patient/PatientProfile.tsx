@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useProfile } from "@/hooks/useAuth";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -15,6 +16,12 @@ import {
 import { Camera, User, Mail, Phone, MapPin, Calendar, Droplets } from "lucide-react";
 
 export default function PatientProfile() {
+
+  const { data: user, isLoading } = useProfile();
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
   return (
     <DashboardLayout userType="patient">
       <div className="space-y-6 max-w-4xl">
@@ -34,7 +41,7 @@ export default function PatientProfile() {
                 <Avatar className="h-24 w-24">
                   <AvatarImage src="/placeholder.svg" />
                   <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                    JD
+                    {user?.email?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <Button
@@ -46,8 +53,12 @@ export default function PatientProfile() {
                 </Button>
               </div>
               <div className="text-center sm:text-left">
-                <h2 className="text-xl font-semibold">John Doe</h2>
-                <p className="text-muted-foreground">john.doe@email.com</p>
+                <h2 className="text-xl font-semibold">
+  {user?.email}
+</h2>
+                <p className="text-muted-foreground">
+  {user?.email}
+</p>
                 <p className="text-sm text-muted-foreground">
                   Member since January 2024
                 </p>
@@ -68,21 +79,24 @@ export default function PatientProfile() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" defaultValue="John" />
+                <Input
+  id="firstName"
+  defaultValue={user?.email?.split("@")[0] || ""}
+/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" defaultValue="Doe" />
+                <Input id="lastName" defaultValue="" />
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="john.doe@email.com" />
+                <Input id="email" type="email" defaultValue={user?.email} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" defaultValue="+1 (555) 123-4567" />
+                <Input id="phone" defaultValue={user?.phone_number || ""} />
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
