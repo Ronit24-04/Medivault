@@ -32,9 +32,20 @@ export const useProfileStore = create<ProfileState>()(
                 if (current) {
                     // Refresh the currentProfile from the fresh API data to keep it in sync
                     const refreshed = profiles.find((p) => p.patient_id === current.patient_id);
-                    if (refreshed) {
-                        set({ currentProfile: refreshed });
-                    } else if (profiles.length > 0) {
+
+if (refreshed) {
+  // ✅ merge backend + local emergency fields
+  set({
+    currentProfile: {
+      ...refreshed,
+      blood_group: current.blood_group,
+      allergies: current.allergies,
+      existing_conditions: current.existing_conditions,
+      height: current.height,
+      weight: current.weight,
+    },
+  });
+} else if (profiles.length > 0) {
                         // Profile no longer exists, fall back to primary
                         const primary = profiles.find((p) => p.is_primary) || profiles[0];
                         set({ currentProfile: primary });

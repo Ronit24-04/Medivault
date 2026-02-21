@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useProfileStore } from "@/stores/useProfileStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useProfile } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
-import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
+import { Shield, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useLogin } from "@/hooks/useAuth";
 
 export default function Login() {
@@ -17,6 +18,8 @@ export default function Login() {
   const [showEmergency, setShowEmergency] = useState(false);
 
   const loginMutation = useLogin();
+  const currentProfile = useProfileStore((state) => state.currentProfile);
+   
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +60,9 @@ export default function Login() {
         <div className="w-full max-w-md animate-fade-in">
           {/* Logo of the app */}
           <Link to="/" className="flex items-center gap-2.5 mb-8">
-            <MediVaultLogoIcon size={40} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+              <Shield className="h-6 w-6 text-primary-foreground" />
+            </div>
             <span className="text-2xl font-semibold tracking-tight">mediVault</span>
           </Link>
 
@@ -158,8 +163,8 @@ export default function Login() {
 
       <div className="hidden lg:flex flex-1 bg-primary items-center justify-center p-12">
         <div className="max-w-md text-center text-primary-foreground">
-          <div className="w-28 h-28 mx-auto mb-8 rounded-2xl bg-white/10 flex items-center justify-center">
-            <MediVaultLogoIcon size={72} />
+          <div className="w-24 h-24 mx-auto mb-8 rounded-2xl bg-white/10 flex items-center justify-center">
+            <Shield className="h-12 w-12" />
           </div>
           <h2 className="text-3xl font-bold mb-4">Secure Access</h2>
           <p className="text-lg opacity-90">
@@ -175,12 +180,17 @@ export default function Login() {
         Emergency Information
       </h2>
 
-      <p><b>Name:</b> John Doe</p>
-      <p><b>Age:</b> 34</p>
-      <p><b>Blood Group:</b> O+</p>
-      <p className="text-red-500 font-medium">
-        Allergy: Penicillin
-      </p>
+      <p><b>Name:</b> {currentProfile?.full_name || "No profile"}</p>
+<p><b>Blood Group:</b> {currentProfile?.blood_group}</p>
+
+<p className="text-red-500 font-medium">
+  Allergy: {currentProfile?.allergies}
+</p>
+
+<p>
+  Conditions: {currentProfile?.existing_conditions}
+</p>
+     
 
       <div className="mt-5 flex gap-3">
   {/* 🚨 Send Alert Button */}
