@@ -38,6 +38,7 @@ import {
   Clock,
   Loader2,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,7 +52,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useRecords } from "@/hooks/useRecords";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useRecords, useDeleteRecord } from "@/hooks/useRecords";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { format } from "date-fns";
 import { MedicalRecord } from "@/api/types";
@@ -104,6 +115,7 @@ export default function PatientRecords() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [viewingRecord, setViewingRecord] = useState<MedicalRecord | null>(null);
+  const [deletingRecord, setDeletingRecord] = useState<MedicalRecord | null>(null);
 
   const handleDownload = (record: MedicalRecord) => {
     const a = document.createElement("a");
@@ -121,6 +133,17 @@ export default function PatientRecords() {
 
   // Fetch medical records
   const { data: records, isLoading, error } = useRecords(patientId || 0);
+
+  // Delete mutation
+  const { mutate: deleteRecord, isPending: isDeleting } = useDeleteRecord();
+
+  const handleDeleteConfirm = () => {
+    if (!deletingRecord || !patientId) return;
+    deleteRecord(
+      { patientId, recordId: deletingRecord.record_id },
+      { onSettled: () => setDeletingRecord(null) }
+    );
+  };
 
   // Filter records based on search and category
   const filteredRecords = records?.filter((record) => {
@@ -317,6 +340,15 @@ export default function PatientRecords() {
                             >
                               <Download className="h-4 w-4" />
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="hidden sm:inline-flex text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Delete record"
+                              onClick={() => setDeletingRecord(record)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon-sm">
@@ -331,6 +363,13 @@ export default function PatientRecords() {
                                 <DropdownMenuItem onClick={() => handleDownload(record)}>
                                   <Download className="mr-2 h-4 w-4" />
                                   Download
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                  onClick={() => setDeletingRecord(record)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -433,6 +472,49 @@ export default function PatientRecords() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deletingRecord}
+        onOpenChange={(open) => !open && !isDeleting && setDeletingRecord(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Delete Record?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete{" "}
+              <span className="font-semibold text-foreground">
+                {deletingRecord?.title}
+              </span>{" "}
+              from your account and remove the file from our servers. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
