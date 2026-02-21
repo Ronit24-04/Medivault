@@ -18,6 +18,14 @@ interface LoginData {
     password: string;
 }
 
+interface PasswordResetTokenData {
+    adminId: number;
+    expiresAt: Date;
+}
+
+const passwordResetTokens = new Map<string, PasswordResetTokenData>();
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 export class AuthService {
     async register(data: RegisterData) {
         // Check if admin already exists
@@ -64,7 +72,7 @@ export class AuthService {
                     admin_id: admin.admin_id,
                     full_name: data.fullName,
                     address: '',
-                    date_of_birth: new Date('1900-01-01'),
+                    date_of_birth: new Date('2000-01-01'),
                     relationship: 'self',
                     is_primary: true,
                 },
@@ -119,6 +127,7 @@ export class AuthService {
                 user_type: admin.user_type,
                 phone_number: admin.phone_number,
                 email_verified: admin.email_verified,
+                created_at: admin.created_at,
             },
             ...tokens,
         };
@@ -164,6 +173,10 @@ export class AuthService {
 
         // Generate reset token (in production, store this in DB with expiration)
         const resetToken = generateRandomToken();
+        passwordResetTokens.set(resetToken, {
+            adminId: admin.admin_id,
+            expiresAt: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
+        });
 
         // Send reset email
         await sendPasswordResetEmail(email, resetToken);
@@ -174,14 +187,26 @@ export class AuthService {
     }
 
     async resetPassword(token: string, newPassword: string) {
-        // In production, verify token from database
-        // For now, we'll skip token verification
+        const tokenData = passwordResetTokens.get(token);
+        if (!tokenData) {
+            throw new AppError(400, 'Invalid or expired reset token');
+        }
+
+        if (tokenData.expiresAt.getTime() < Date.now()) {
+            passwordResetTokens.delete(token);
+            throw new AppError(400, 'Invalid or expired reset token');
+        }
 
         // Hash new password
         const passwordHash = await hashPassword(newPassword);
 
-        // Update password (you would find admin by token in production)
-        // This is a simplified version
+        await prisma.admin.update({
+            where: { admin_id: tokenData.adminId },
+            data: { password_hash: passwordHash },
+        });
+
+        passwordResetTokens.delete(token);
+
         return {
             message: 'Password reset successful',
         };

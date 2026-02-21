@@ -36,6 +36,16 @@ export interface HospitalAlert {
     };
 }
 
+export interface SharedRecordFile {
+    record_id: number;
+    title: string;
+    category: string;
+    record_date: string;
+    file_path: string;
+    file_type: string;
+    description?: string;
+}
+
 export interface UpdateHospitalProfileRequest {
     hospitalName?: string;
     address?: string;
@@ -67,6 +77,17 @@ export const hospitalAdminService = {
     async getSharedRecords(): Promise<HospitalSharedRecord[]> {
         try {
             const response = await apiClient.get<ApiResponse<HospitalSharedRecord[]>>('/hospital/shared-records');
+            return response.data.data!;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
+
+    async getSharedRecordFiles(shareId: number): Promise<SharedRecordFile[]> {
+        try {
+            const response = await apiClient.get<ApiResponse<SharedRecordFile[]>>(
+                `/hospital/shared-records/${shareId}/files`
+            );
             return response.data.data!;
         } catch (error) {
             throw new Error(handleApiError(error));

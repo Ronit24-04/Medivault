@@ -6,6 +6,8 @@ import Index from "./pages/Index";
 import Install from "./pages/Install";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import PatientDashboard from "./pages/patient/PatientDashboard";
 import PatientRecords from "./pages/patient/PatientRecords";
 import UploadRecord from "./pages/patient/UploadRecord";
@@ -31,6 +33,8 @@ const App = () => (
           <Route path="/install" element={<Install />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Patient Routes */}
           <Route path="/patient/dashboard" element={<PatientDashboard />} />

@@ -3,6 +3,7 @@ import { AppError } from '../../middleware/error.middleware';
 
 interface CreatePatientData {
     fullName: string;
+    address?: string;
     dateOfBirth?: string;
     gender?: string;
     bloodType?: string;
@@ -29,8 +30,8 @@ export class PatientsService {
             data: {
                 admin_id: adminId,
                 full_name: data.fullName,
-                address: '',
-                date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : new Date('1900-01-01'),
+                address: data.address || '',
+                date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : new Date('2000-01-01'),
                 gender: data.gender,
                 blood_type: data.bloodType,
                 height_cm: data.height,
@@ -106,6 +107,7 @@ export class PatientsService {
             where: { patient_id: patientId },
             data: {
                 full_name: data.fullName,
+                address: data.address,
                 date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
                 gender: data.gender,
                 blood_type: data.bloodType,
@@ -113,6 +115,28 @@ export class PatientsService {
                 weight_kg: data.weight,
                 relationship: data.relationship,
                 is_primary: data.isPrimary,
+            },
+        });
+
+        return patient;
+    }
+
+    async updateProfileImage(adminId: number, patientId: number, profileImagePath: string) {
+        const existingPatient = await prisma.patient.findFirst({
+            where: {
+                patient_id: patientId,
+                admin_id: adminId,
+            },
+        });
+
+        if (!existingPatient) {
+            throw new AppError(404, 'Patient not found');
+        }
+
+        const patient = await prisma.patient.update({
+            where: { patient_id: patientId },
+            data: {
+                profile_image: profileImagePath,
             },
         });
 

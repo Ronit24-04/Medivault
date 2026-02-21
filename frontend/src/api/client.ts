@@ -67,7 +67,7 @@ apiClient.interceptors.response.use(
                 localStorage.removeItem('refreshToken');
                 localStorage.removeItem('user');
                 window.location.href = '/login';
-                return Promise.reject(refreshError);
+                return Promise.reject(error);
             }
         }
 
@@ -79,6 +79,10 @@ export default apiClient;
 
 // Helper function to handle API errors
 export const handleApiError = (error: unknown): string => {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
     if (axios.isAxiosError(error)) {
         const apiError = error as AxiosError<ApiResponse>;
 

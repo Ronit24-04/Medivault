@@ -33,6 +33,17 @@ export class HospitalAdminController {
         }
     }
 
+    async getSharedRecordFiles(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const shareId = parseInt(req.params.shareId as string, 10);
+            const files = await hospitalAdminService.getSharedRecordFiles(adminId, shareId);
+            res.json({ success: true, data: files });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async getAlerts(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const adminId = req.admin!.adminId;

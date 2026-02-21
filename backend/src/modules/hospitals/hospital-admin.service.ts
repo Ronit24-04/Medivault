@@ -72,6 +72,43 @@ export class HospitalAdminService {
         });
     }
 
+    async getSharedRecordFiles(adminId: number, shareId: number) {
+        const hospital = await this.getHospitalByAdminId(adminId);
+        if (!hospital) {
+            throw new AppError(404, 'Hospital profile not found');
+        }
+
+        const share = await prisma.sharedAccess.findFirst({
+            where: {
+                share_id: shareId,
+                hospital_id: hospital.hospital_id,
+                status: 'active',
+            },
+        });
+
+        if (!share) {
+            throw new AppError(404, 'Shared access not found');
+        }
+
+        const records = await prisma.medicalRecord.findMany({
+            where: {
+                patient_id: share.patient_id,
+            },
+            orderBy: { record_date: 'desc' },
+            select: {
+                record_id: true,
+                title: true,
+                category: true,
+                record_date: true,
+                file_path: true,
+                file_type: true,
+                description: true,
+            },
+        });
+
+        return records;
+    }
+
     async getAlerts(adminId: number) {
         const hospital = await this.getHospitalByAdminId(adminId);
         if (!hospital) return [];

@@ -60,4 +60,13 @@ export const patientsService = {
             throw new Error(handleApiError(error));
         }
     },
+
+    // Send emergency alert SMS to patient's contacts
+    async sendEmergencyAlert(patientId: number): Promise<void> {
+        try {
+            await apiClient.post(`/patients/${patientId}/send-alert`);
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
 };

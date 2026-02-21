@@ -1,14 +1,20 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { patientsService } from "@/api/services";
+import apiClient from "@/api/client";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfile } from "@/hooks/useAuth";
-import { Separator } from "@/components/ui/separator";
+import {
+  useCreateContact,
+  useDeleteContact,
+  useEmergencyContacts,
+  useUpdateContact,
+} from "@/hooks/useEmergency";
 import {
   Select,
   SelectContent,
@@ -16,7 +22,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, User, Mail, Phone, MapPin, Calendar, Droplets } from "lucide-react";
+import { Camera, User, Phone, MapPin, Droplets } from "lucide-react";
+import { toast } from "sonner";
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000/api").replace(/\/api\/?$/, "");
+const MAX_EMERGENCY_CONTACTS = 4;
+
+type EmergencyContactForm = {
+  name: string;
+  relationship: string;
+  phoneNumber: string;
+};
+
+type AddressParts = {
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipCode: string;
+};
+
+const parseAddress = (rawAddress?: string): AddressParts => {
+  if (!rawAddress) {
+    return { streetAddress: "", city: "", state: "", zipCode: "" };
+  }
+
+  try {
+    const parsed = JSON.parse(rawAddress);
+    return {
+      streetAddress: parsed.streetAddress || "",
+      city: parsed.city || "",
+      state: parsed.state || "",
+      zipCode: parsed.zipCode || "",
+    };
+  } catch (_error) {
+    return { streetAddress: rawAddress, city: "", state: "", zipCode: "" };
+  }
+};
 
 export default function PatientProfile() {
   const setCurrentProfile = useProfileStore((state) => state.setCurrentProfile);
@@ -30,8 +71,36 @@ const [allergies, setAllergies] = useState("");
 const [conditions, setConditions] = useState("");
 const [height, setHeight] = useState("");
 const [weight, setWeight] = useState("");
+const [dateOfBirth, setDateOfBirth] = useState("");
+const [gender, setGender] = useState("");
+const [streetAddress, setStreetAddress] = useState("");
+const [city, setCity] = useState("");
+const [state, setState] = useState("");
+const [zipCode, setZipCode] = useState("");
+const [emergencyContactsForm, setEmergencyContactsForm] = useState<EmergencyContactForm[]>(
+  Array.from({ length: MAX_EMERGENCY_CONTACTS }, () => ({
+    name: "",
+    relationship: "",
+    phoneNumber: "",
+  }))
+);
+const [isSaving, setIsSaving] = useState(false);
+const [isUploadingProfileImage, setIsUploadingProfileImage] = useState(false);
+const profileImageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const { data: contacts = [] } = useEmergencyContacts();
+  const createContactMutation = useCreateContact();
+  const updateContactMutation = useUpdateContact();
+  const deleteContactMutation = useDeleteContact();
 
   const { data: user, isLoading } = useProfile();
+  const memberSince = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
   useEffect(() => {
   // FIRST priority → Zustand saved data
   if (currentProfile) {
@@ -43,6 +112,22 @@ const [weight, setWeight] = useState("");
     setConditions(currentProfile.existing_conditions || "");
     setHeight(currentProfile.height || "");
 setWeight(currentProfile.weight || "");
+    setDateOfBirth(
+      currentProfile.date_of_birth
+        ? (() => {
+            const normalizedDob = new Date(currentProfile.date_of_birth)
+              .toISOString()
+              .slice(0, 10);
+            return normalizedDob === "1900-01-01" ? "2000-01-01" : normalizedDob;
+          })()
+        : "2000-01-01"
+    );
+    setGender(currentProfile.gender || "");
+    const parsedAddress = parseAddress(currentProfile.address);
+    setStreetAddress(parsedAddress.streetAddress);
+    setCity(parsedAddress.city);
+    setState(parsedAddress.state);
+    setZipCode(parsedAddress.zipCode);
   }
   // fallback → backend user
   else if (user) {
@@ -51,9 +136,186 @@ setWeight(currentProfile.weight || "");
   }
 }, [user, currentProfile]);
 
+  const patientEmergencyContacts = useMemo(() => {
+    if (!currentProfile) return [];
+
+    return contacts
+      .filter(
+        (contact) =>
+          contact.patient_id === currentProfile.patient_id && contact.is_active
+      )
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, MAX_EMERGENCY_CONTACTS);
+  }, [contacts, currentProfile]);
+
+  useEffect(() => {
+    const nextContacts = Array.from({ length: MAX_EMERGENCY_CONTACTS }, (_, index) => {
+      const contact = patientEmergencyContacts[index];
+      return {
+        name: contact?.name || "",
+        relationship: contact?.relationship || "",
+        phoneNumber: contact?.phone_number || "",
+      };
+    });
+
+    setEmergencyContactsForm(nextContacts);
+  }, [patientEmergencyContacts]);
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
+
+  const handleSaveChanges = async () => {
+    try {
+      if (!currentProfile?.patient_id) return;
+
+      setIsSaving(true);
+
+      const payload = {
+        fullName: `${firstName} ${lastName}`.trim(),
+        address: JSON.stringify({
+          streetAddress: streetAddress.trim(),
+          city: city.trim(),
+          state: state.trim(),
+          zipCode: zipCode.trim(),
+        }),
+        ...(dateOfBirth && { dateOfBirth }),
+        ...(gender && { gender }),
+        ...(bloodGroup && { bloodType: bloodGroup }),
+        ...(height && { height: Number(height) }),
+        ...(weight && { weight: Number(weight) }),
+      };
+
+      const updated = await patientsService.updatePatient(
+        currentProfile.patient_id,
+        payload
+      );
+
+      for (let index = 0; index < MAX_EMERGENCY_CONTACTS; index += 1) {
+        const formContact = emergencyContactsForm[index];
+        const existingContact = patientEmergencyContacts[index];
+
+        const normalizedContact = {
+          name: formContact.name.trim(),
+          relationship: formContact.relationship.trim(),
+          phoneNumber: formContact.phoneNumber.trim(),
+        };
+        const hasAnyField =
+          normalizedContact.name ||
+          normalizedContact.relationship ||
+          normalizedContact.phoneNumber;
+        const isComplete =
+          normalizedContact.name &&
+          normalizedContact.relationship &&
+          normalizedContact.phoneNumber;
+
+        if (hasAnyField && !isComplete) {
+          throw new Error(
+            `Please fill all emergency contact fields for contact #${index + 1}.`
+          );
+        }
+
+        if (isComplete) {
+          if (existingContact) {
+            await updateContactMutation.mutateAsync({
+              contactId: existingContact.contact_id,
+              data: {
+                ...normalizedContact,
+                priority: index + 1,
+              },
+            });
+          } else {
+            await createContactMutation.mutateAsync({
+              patientId: currentProfile.patient_id,
+              ...normalizedContact,
+              priority: index + 1,
+            });
+          }
+        } else if (existingContact) {
+          await deleteContactMutation.mutateAsync(existingContact.contact_id);
+        }
+      }
+
+      setCurrentProfile({
+        ...updated,
+        address: JSON.stringify({
+          streetAddress: streetAddress.trim(),
+          city: city.trim(),
+          state: state.trim(),
+          zipCode: zipCode.trim(),
+        }),
+        date_of_birth: dateOfBirth,
+        gender,
+        blood_group: bloodGroup,
+        allergies: allergies,
+        existing_conditions: conditions,
+        height: height,
+        weight: weight,
+      } as any);
+
+      toast.success("Profile updated successfully");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateEmergencyContactField = (
+    index: number,
+    field: keyof EmergencyContactForm,
+    value: string
+  ) => {
+    setEmergencyContactsForm((previousContacts) =>
+      previousContacts.map((contact, currentIndex) =>
+        currentIndex === index
+          ? { ...contact, [field]: value }
+          : contact
+      )
+    );
+  };
+
+  const handleProfileImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentProfile?.patient_id) return;
+
+    try {
+      setIsUploadingProfileImage(true);
+
+      const formData = new FormData();
+      formData.append("profileImage", file);
+
+      const response = await apiClient.put(
+        `/patients/${currentProfile.patient_id}/profile-image`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const updatedPatient = response.data?.data;
+      if (updatedPatient) {
+        setCurrentProfile({
+          ...currentProfile,
+          ...updatedPatient,
+        } as any);
+      }
+
+      toast.success("Profile image updated");
+    } catch (error) {
+      toast.error("Failed to upload profile image");
+    } finally {
+      if (profileImageInputRef.current) {
+        profileImageInputRef.current.value = "";
+      }
+      setIsUploadingProfileImage(false);
+    }
+  };
+
   return (
     <DashboardLayout userType="patient">
       <div className="space-y-6 max-w-4xl">
@@ -71,7 +333,13 @@ setWeight(currentProfile.weight || "");
             <div className="flex flex-col sm:flex-row items-center gap-6">
               <div className="relative">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src="/placeholder.svg" />
+                  <AvatarImage
+                    src={
+                      currentProfile?.profile_image
+                        ? `${API_BASE_URL}${currentProfile.profile_image}`
+                        : "/placeholder.svg"
+                    }
+                  />
                   <AvatarFallback className="text-2xl bg-primary/10 text-primary">
                     {user?.email?.charAt(0).toUpperCase()}
                   </AvatarFallback>
@@ -80,9 +348,18 @@ setWeight(currentProfile.weight || "");
                   size="icon"
                   variant="secondary"
                   className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                  onClick={() => profileImageInputRef.current?.click()}
+                  disabled={isUploadingProfileImage}
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
+                <input
+                  ref={profileImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfileImageUpload}
+                />
               </div>
               <div className="text-center sm:text-left">
                 <h2 className="text-xl font-semibold">
@@ -92,7 +369,7 @@ setWeight(currentProfile.weight || "");
   {user?.email}
 </p>
                 <p className="text-sm text-muted-foreground">
-                  Member since January 2024
+                  Member since {memberSince || "N/A"}
                 </p>
               </div>
             </div>
@@ -143,13 +420,18 @@ setWeight(currentProfile.weight || "");
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="dob">Date of Birth</Label>
-                <Input id="dob" type="date" defaultValue="1980-05-15" />
+                <Input
+                  id="dob"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="gender">Gender</Label>
-                <Select defaultValue="male">
+                <Select value={gender} onValueChange={setGender}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="male">Male</SelectItem>
@@ -220,7 +502,6 @@ setWeight(currentProfile.weight || "");
             </div>
             <div className="space-y-2">
               <Label htmlFor="conditions">Existing Conditions</Label>
-              <Label htmlFor="conditions">Existing Conditions</Label>
 <Input
   id="conditions"
   value={conditions}
@@ -241,20 +522,40 @@ setWeight(currentProfile.weight || "");
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="address">Street Address</Label>
-              <Input id="address" defaultValue="123 Main Street" />
+              <Input
+                id="address"
+                value={streetAddress}
+                onChange={(e) => setStreetAddress(e.target.value)}
+                placeholder="Enter your address"
+              />
             </div>
             <div className="grid sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="city">City</Label>
-                <Input id="city" defaultValue="New York" />
+                <Input
+                  id="city"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="City"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="state">State</Label>
-                <Input id="state" defaultValue="NY" />
+                <Input
+                  id="state"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  placeholder="State"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="zip">ZIP Code</Label>
-                <Input id="zip" defaultValue="10001" />
+                <Input
+                  id="zip"
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                  placeholder="ZIP Code"
+                />
               </div>
             </div>
           </CardContent>
@@ -265,24 +566,58 @@ setWeight(currentProfile.weight || "");
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Phone className="h-5 w-5" />
-              Emergency Contact
+              Emergency Contacts
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="emergencyName">Contact Name</Label>
-                <Input id="emergencyName" defaultValue="Jane Doe" />
+            {emergencyContactsForm.map((contact, index) => (
+              <div key={index} className="space-y-4 rounded-md border p-4">
+                <p className="text-sm font-medium">Contact #{index + 1}</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={`emergencyName-${index}`}>Contact Name</Label>
+                    <Input
+                      id={`emergencyName-${index}`}
+                      value={contact.name}
+                      onChange={(e) =>
+                        updateEmergencyContactField(index, "name", e.target.value)
+                      }
+                      placeholder="Enter contact name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`emergencyRelation-${index}`}>Relationship</Label>
+                    <Input
+                      id={`emergencyRelation-${index}`}
+                      value={contact.relationship}
+                      onChange={(e) =>
+                        updateEmergencyContactField(
+                          index,
+                          "relationship",
+                          e.target.value
+                        )
+                      }
+                      placeholder="e.g. Spouse"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`emergencyPhone-${index}`}>Phone Number</Label>
+                  <Input
+                    id={`emergencyPhone-${index}`}
+                    value={contact.phoneNumber}
+                    onChange={(e) =>
+                      updateEmergencyContactField(
+                        index,
+                        "phoneNumber",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Enter phone number"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="emergencyRelation">Relationship</Label>
-                <Input id="emergencyRelation" defaultValue="Spouse" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="emergencyPhone">Phone Number</Label>
-              <Input id="emergencyPhone" defaultValue="+1 (555) 987-6543" />
-            </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -290,39 +625,10 @@ setWeight(currentProfile.weight || "");
        <div className="flex justify-end">
   <Button
     size="lg"
-    onClick={async () => {
-      try {
-        if (!currentProfile?.patient_id) return;
-
-        const payload = {
-  fullName: `${firstName} ${lastName}`,   // ✅ camelCase
-  ...(bloodGroup && { bloodType: bloodGroup }),
-  ...(height && { height: Number(height) }),
-  ...(weight && { weight: Number(weight) }),
-};
-        console.log("🔥 SENDING TO BACKEND", payload);
-
-        const updated = await patientsService.updatePatient(
-          currentProfile.patient_id,
-          payload
-        );
-
-        console.log("✅ BACKEND SAVED", updated);
-
-       setCurrentProfile({
-  ...updated, // backend fields
-  blood_group: bloodGroup,
-  allergies: allergies,
-  existing_conditions: conditions,
-  height: height,
-  weight: weight,
-});
-      } catch (err) {
-        console.error("❌ SAVE FAILED", err);
-      }
-    }}
+    onClick={handleSaveChanges}
+    disabled={isSaving}
   >
-    Save Changes
+    {isSaving ? "Saving..." : "Save Changes"}
   </Button>
 </div>
       </div>

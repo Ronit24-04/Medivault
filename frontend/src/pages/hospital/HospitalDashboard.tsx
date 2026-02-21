@@ -47,16 +47,19 @@ export default function HospitalDashboard() {
       label: "Total Patients",
       value: uniquePatients.toString(),
       icon: Users,
+      tone: "default",
     },
     {
       label: "Active Records",
       value: activeRecords.length.toString(),
       icon: FileText,
+      tone: "default",
     },
     {
       label: "Pending Alerts",
       value: pendingAlerts.length.toString(),
       icon: Activity,
+      tone: "destructive",
     },
   ];
 
@@ -95,18 +98,32 @@ export default function HospitalDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
+            const isPendingAlertsCard = stat.tone === "destructive";
             return (
-              <Card key={stat.label} className="card-stat">
+              <Card
+                key={stat.label}
+                className={`card-stat ${isPendingAlertsCard ? "border-destructive/30 bg-destructive/5" : ""}`}
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                    <p className="text-2xl md:text-3xl font-bold">{stat.value}</p>
-                    <div className="flex items-center gap-1 text-sm mt-1 text-success">
+                    <p
+                      className={`text-2xl md:text-3xl font-bold ${
+                        isPendingAlertsCard ? "text-destructive" : ""
+                      }`}
+                    >
+                      {stat.value}
+                    </p>
+                    <div
+                      className={`flex items-center gap-1 text-sm mt-1 ${
+                        isPendingAlertsCard ? "text-destructive" : "text-success"
+                      }`}
+                    >
                       <TrendingUp className="h-3 w-3" />
-                      Live
+                      {isPendingAlertsCard ? "Needs Attention" : "Live"}
                     </div>
                   </div>
-                  <div className="icon-container">
+                  <div className={`icon-container ${isPendingAlertsCard ? "text-destructive" : ""}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                 </div>

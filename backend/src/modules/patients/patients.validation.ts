@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const createPatientSchema = z.object({
     body: z.object({
         fullName: z.string().min(1, 'Full name is required'),
+        address: z.string().optional(),
         dateOfBirth: z.string().optional(),
         gender: z.enum(['male', 'female', 'other']).optional(),
         bloodType: z.string().optional(),
@@ -22,6 +23,7 @@ export const updatePatientSchema = z.object({
     }),
     body: z.object({
         fullName: z.string().min(1).optional(),
+        address: z.string().optional(),
         dateOfBirth: z.string().optional(),
         gender: z.enum(['male', 'female', 'other']).optional(),
         bloodType: z.string().optional(),

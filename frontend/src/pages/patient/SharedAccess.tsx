@@ -57,7 +57,12 @@ import { MoreVertical } from "lucide-react";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { showSuccess } from "@/lib/toast";
 import { usePatientId } from "@/hooks/usePatientId";
-import { useSharedAccess, useSharedAccessStats, useRevokeShare } from "@/hooks/useSharedAccess";
+import {
+  useCreateShare,
+  useSharedAccess,
+  useSharedAccessStats,
+  useRevokeShare,
+} from "@/hooks/useSharedAccess";
 import { SharedAccess as SharedAccessType } from "@/api/services";
 import { format } from "date-fns";
 
@@ -87,13 +92,18 @@ export default function SharedAccess() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedShare, setSelectedShare] = useState<SharedAccessType | null>(null);
   const [copied, setCopied] = useState(false);
+  const [providerEmail, setProviderEmail] = useState("");
+  const [accessLevel, setAccessLevel] = useState("");
+  const [accessDuration, setAccessDuration] = useState("");
 
   const { patientId } = usePatientId();
   const { data: shares, isLoading, error } = useSharedAccess(patientId || 0);
   const { data: stats } = useSharedAccessStats(patientId || 0);
   const revokeShareMutation = useRevokeShare();
+  const createShareMutation = useCreateShare();
 
   const filteredShares = (shares || []).filter((share) => {
     const matchesSearch = share.provider_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -123,6 +133,42 @@ export default function SharedAccess() {
   const handleRevokeAccess = (shareId: number) => {
     if (!patientId) return;
     revokeShareMutation.mutate({ patientId, shareId });
+  };
+
+  const handleGrantAccess = async () => {
+    if (!patientId) return;
+
+    if (!providerEmail.trim()) {
+      return;
+    }
+
+    if (!accessLevel) {
+      return;
+    }
+
+    if (!accessDuration) {
+      return;
+    }
+
+    const durationDays = Number(accessDuration);
+    const expiresOn = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    await createShareMutation.mutateAsync({
+      patientId,
+      data: {
+        providerName: providerEmail.trim(),
+        providerType: "Hospital",
+        accessLevel,
+        expiresOn,
+      },
+    });
+
+    setProviderEmail("");
+    setAccessLevel("");
+    setAccessDuration("");
+    setShareDialogOpen(false);
   };
 
   const statsData = [
@@ -173,7 +219,7 @@ export default function SharedAccess() {
               Manage who can access your medical records.
             </p>
           </div>
-          <Dialog>
+          <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -184,17 +230,28 @@ export default function SharedAccess() {
               <DialogHeader>
                 <DialogTitle>Share Your Records</DialogTitle>
                 <DialogDescription>
-                  Grant access to a healthcare provider.
+                  Grant access only to a registered MediVault hospital.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="provider">Provider Email or ID</Label>
-                  <Input id="provider" placeholder="hospital@example.com" />
+                  <Label htmlFor="provider">Hospital Email</Label>
+                  <Input
+                    id="provider"
+                    placeholder="registered-hospital@example.com"
+                    type="email"
+                    value={providerEmail}
+                    onChange={(e) => setProviderEmail(e.target.value)}
+                    disabled={createShareMutation.isPending}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="access">Access Level</Label>
-                  <Select>
+                  <Select
+                    value={accessLevel}
+                    onValueChange={setAccessLevel}
+                    disabled={createShareMutation.isPending}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select access level" />
                     </SelectTrigger>
@@ -208,7 +265,11 @@ export default function SharedAccess() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="duration">Access Duration</Label>
-                  <Select>
+                  <Select
+                    value={accessDuration}
+                    onValueChange={setAccessDuration}
+                    disabled={createShareMutation.isPending}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select duration" />
                     </SelectTrigger>
@@ -220,7 +281,18 @@ export default function SharedAccess() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button className="w-full">Grant Access</Button>
+                <Button
+                  className="w-full"
+                  onClick={handleGrantAccess}
+                  disabled={
+                    createShareMutation.isPending ||
+                    !providerEmail.trim() ||
+                    !accessLevel ||
+                    !accessDuration
+                  }
+                >
+                  {createShareMutation.isPending ? "Granting Access..." : "Grant Access"}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>

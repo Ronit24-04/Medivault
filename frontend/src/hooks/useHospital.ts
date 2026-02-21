@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { hospitalAdminService, UpdateHospitalProfileRequest } from '../api/services/hospital-admin.service';
+import {
+    hospitalAdminService,
+    SharedRecordFile,
+    UpdateHospitalProfileRequest,
+} from '../api/services/hospital-admin.service';
 import { toast } from 'sonner';
 
 export const useHospitalProfile = () => {
@@ -37,6 +41,15 @@ export const useHospitalAlerts = () => {
         queryKey: ['hospital-alerts'],
         queryFn: () => hospitalAdminService.getAlerts(),
         staleTime: 1 * 60 * 1000,
+    });
+};
+
+export const useSharedRecordFiles = (shareId: number | null) => {
+    return useQuery({
+        queryKey: ['hospital-shared-record-files', shareId],
+        queryFn: () => hospitalAdminService.getSharedRecordFiles(shareId!),
+        enabled: !!shareId,
+        staleTime: 30 * 1000,
     });
 };
 

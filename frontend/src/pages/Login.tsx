@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useProfileStore } from "@/stores/useProfileStore";
+import { patientsService } from "@/api/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,7 @@ import { useProfile } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useLogin } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showEmergency, setShowEmergency] = useState(false);
+  const [isSendingAlert, setIsSendingAlert] = useState(false);
 
   const loginMutation = useLogin();
   const currentProfile = useProfileStore((state) => state.currentProfile);
@@ -44,6 +47,32 @@ export default function Login() {
       }
     } catch (error) {
       // Error is already handled by the mutation's onError
+    }
+  };
+
+  const handleSendEmergencyAlert = async () => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      toast.error("Please sign in before sending an emergency alert.");
+      return;
+    }
+
+    if (!currentProfile?.patient_id) {
+      toast.error("No patient profile selected. Please sign in first.");
+      return;
+    }
+
+    try {
+      setIsSendingAlert(true);
+      await patientsService.sendEmergencyAlert(currentProfile.patient_id);
+      toast.success("Emergency alert sent successfully");
+      setShowEmergency(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send emergency alert"
+      );
+    } finally {
+      setIsSendingAlert(false);
     }
   };
 
@@ -195,12 +224,11 @@ export default function Login() {
       <div className="mt-5 flex gap-3">
   {/* 🚨 Send Alert Button */}
   <button
-    onClick={() => {
-      alert("Emergency Alert Sent 🚑");
-    }}
+    onClick={handleSendEmergencyAlert}
+    disabled={isSendingAlert}
     className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
   >
-    Send Alert
+    {isSendingAlert ? "Sending..." : "Send Alert"}
   </button>
 
   {/* Close Button */}
