@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { patientsService } from './patients.service';
 import { AuthRequest } from '../../middleware/auth.middleware';
+import { AppError } from '../../middleware/error.middleware';
 
 export class PatientsController {
     async createPatient(req: AuthRequest, res: Response, next: NextFunction) {
@@ -55,6 +56,31 @@ export class PatientsController {
         }
     }
 
+    async updateProfileImage(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const patientId = parseInt(req.params.patientId);
+
+            if (!req.file?.filename) {
+                throw new AppError(400, 'Profile image file is required');
+            }
+
+            const profileImagePath = `/uploads/profile-images/${req.file.filename}`;
+            const patient = await patientsService.updateProfileImage(
+                req.admin!.adminId,
+                patientId,
+                profileImagePath
+            );
+
+            res.status(200).json({
+                success: true,
+                message: 'Profile image updated successfully',
+                data: patient,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async deletePatient(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const patientId = parseInt(req.params.patientId);
@@ -75,6 +101,20 @@ export class PatientsController {
             res.status(200).json({
                 success: true,
                 data: info,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async verifyProfilePin(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const patientId = parseInt(req.params.patientId);
+            const pin = String(req.body?.pin || '');
+            const result = await patientsService.verifyProfilePin(req.admin!.adminId, patientId, pin);
+            res.status(200).json({
+                success: true,
+                message: result.message,
             });
         } catch (error) {
             next(error);

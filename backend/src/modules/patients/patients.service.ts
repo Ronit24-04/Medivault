@@ -3,6 +3,7 @@ import { AppError } from '../../middleware/error.middleware';
 
 interface CreatePatientData {
     fullName: string;
+    address?: string;
     dateOfBirth?: string;
     gender?: string;
     bloodType?: string;
@@ -13,6 +14,7 @@ interface CreatePatientData {
     currentMedications?: string;
     relationship: string;
     isPrimary?: boolean;
+    emergencyPin?: string;
 }
 
 export class PatientsService {
@@ -29,8 +31,8 @@ export class PatientsService {
             data: {
                 admin_id: adminId,
                 full_name: data.fullName,
-                address: '',
-                date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : new Date('1900-01-01'),
+                address: data.address || '',
+                date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : new Date('2000-01-01'),
                 gender: data.gender,
                 blood_type: data.bloodType,
                 height_cm: data.height,
@@ -102,10 +104,14 @@ export class PatientsService {
             });
         }
 
+        const emergencyPinValue =
+            data.emergencyPin !== undefined ? data.emergencyPin : undefined;
+
         const patient = await prisma.patient.update({
             where: { patient_id: patientId },
             data: {
                 full_name: data.fullName,
+                address: data.address,
                 date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
                 gender: data.gender,
                 blood_type: data.bloodType,
@@ -113,6 +119,29 @@ export class PatientsService {
                 weight_kg: data.weight,
                 relationship: data.relationship,
                 is_primary: data.isPrimary,
+                emergency_pin: emergencyPinValue,
+            },
+        });
+
+        return patient;
+    }
+
+    async updateProfileImage(adminId: number, patientId: number, profileImagePath: string) {
+        const existingPatient = await prisma.patient.findFirst({
+            where: {
+                patient_id: patientId,
+                admin_id: adminId,
+            },
+        });
+
+        if (!existingPatient) {
+            throw new AppError(404, 'Patient not found');
+        }
+
+        const patient = await prisma.patient.update({
+            where: { patient_id: patientId },
+            data: {
+                profile_image: profileImagePath,
             },
         });
 
@@ -158,6 +187,33 @@ export class PatientsService {
         }
 
         return patient;
+    }
+
+    async verifyProfilePin(adminId: number, patientId: number, pin: string) {
+        const patient = await prisma.patient.findFirst({
+            where: {
+                patient_id: patientId,
+                admin_id: adminId,
+            },
+            select: {
+                emergency_pin: true,
+            },
+        });
+
+        if (!patient) {
+            throw new AppError(404, 'Patient not found');
+        }
+
+        if (!patient.emergency_pin) {
+            throw new AppError(400, 'No PIN has been set for this profile');
+        }
+
+        const isValidPin = pin === patient.emergency_pin;
+        if (!isValidPin) {
+            throw new AppError(401, 'Invalid PIN');
+        }
+
+        return { message: 'PIN verified' };
     }
 }
 

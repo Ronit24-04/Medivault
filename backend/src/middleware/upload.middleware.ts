@@ -1,5 +1,7 @@
 import multer from 'multer';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import fs from 'fs';
+import path from 'path';
 import cloudinary from '../config/cloudinary';
 import { env } from '../config/env';
 
@@ -34,7 +36,7 @@ const profilePictureStorage = new CloudinaryStorage({
 });
 
 // File filter
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedTypes = env.ALLOWED_FILE_TYPES.split(',');
 
     if (allowedTypes.includes(file.mimetype)) {
@@ -56,7 +58,7 @@ export const uploadMedicalRecord = multer({
 // Upload middleware for profile pictures
 export const uploadProfilePicture = multer({
     storage: profilePictureStorage,
-    fileFilter: (req, file, cb) => {
+    fileFilter: (_req, file, cb) => {
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
         } else {
@@ -65,5 +67,35 @@ export const uploadProfilePicture = multer({
     },
     limits: {
         fileSize: 5 * 1024 * 1024, // 5MB for profile pictures
+    },
+});
+
+const profileImagesDir = path.join(process.cwd(), 'uploads', 'profile-images');
+if (!fs.existsSync(profileImagesDir)) {
+    fs.mkdirSync(profileImagesDir, { recursive: true });
+}
+
+const localProfileImageStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+        cb(null, profileImagesDir);
+    },
+    filename: (req: any, file, cb) => {
+        const patientId = req.params.patientId || 'patient';
+        const extension = path.extname(file.originalname) || '.jpg';
+        cb(null, `${patientId}-${Date.now()}${extension}`);
+    },
+});
+
+export const uploadProfileImage = multer({
+    storage: localProfileImageStorage,
+    fileFilter: (_req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+            return;
+        }
+        cb(new Error('Only image files are allowed'));
+    },
+    limits: {
+        fileSize: 5 * 1024 * 1024,
     },
 });

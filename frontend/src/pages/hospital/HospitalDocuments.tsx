@@ -36,8 +36,11 @@ import {
   User,
   Loader2,
 } from "lucide-react";
-import { useHospitalSharedRecords } from "@/hooks/useHospital";
-import { HospitalSharedRecord } from "@/api/services/hospital-admin.service";
+import { useHospitalSharedRecords, useSharedRecordFiles } from "@/hooks/useHospital";
+import {
+  HospitalSharedRecord,
+  SharedRecordFile,
+} from "@/api/services/hospital-admin.service";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -57,6 +60,11 @@ export default function HospitalDocuments() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewDoc, setViewDoc] = useState<HospitalSharedRecord | null>(null);
+  const [viewFilesShare, setViewFilesShare] = useState<HospitalSharedRecord | null>(null);
+  const [selectedFile, setSelectedFile] = useState<SharedRecordFile | null>(null);
+  const { data: sharedFiles, isLoading: isLoadingFiles } = useSharedRecordFiles(
+    viewFilesShare?.share_id || null
+  );
 
   const filtered = (sharedRecords ?? []).filter((doc) => {
     const matchesSearch =
@@ -72,6 +80,19 @@ export default function HospitalDocuments() {
   const handleDownload = (doc: HospitalSharedRecord) => {
     toast.info(`Requesting records access for ${doc.patient.full_name}.`);
   };
+
+  const getStatusVariant = (status: string) => {
+    if (status === "rejected") return "destructive" as const;
+    if (status === "active") return "default" as const;
+    return "secondary" as const;
+  };
+
+  const isImageFile = (file: SharedRecordFile) =>
+    file.file_type?.startsWith("image/") ||
+    /\.(png|jpg|jpeg|gif|webp)$/i.test(file.file_path);
+
+  const isPdfFile = (file: SharedRecordFile) =>
+    file.file_type === "application/pdf" || /\.pdf$/i.test(file.file_path);
 
   return (
     <DashboardLayout userType="hospital">
@@ -179,7 +200,7 @@ export default function HospitalDocuments() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={doc.status === "active" ? "default" : "secondary"}>
+                          <Badge variant={getStatusVariant(doc.status)}>
                             {doc.status}
                           </Badge>
                         </TableCell>
@@ -189,7 +210,10 @@ export default function HospitalDocuments() {
                               variant="ghost"
                               size="icon"
                               title="View"
-                              onClick={() => setViewDoc(doc)}
+                              onClick={() => {
+                                setViewFilesShare(doc);
+                                setSelectedFile(null);
+                              }}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -243,7 +267,7 @@ export default function HospitalDocuments() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
-                  <Badge variant={viewDoc.status === "active" ? "default" : "secondary"}>
+                  <Badge variant={getStatusVariant(viewDoc.status)}>
                     {viewDoc.status}
                   </Badge>
                 </div>
@@ -281,6 +305,96 @@ export default function HospitalDocuments() {
                 <Button variant="outline" onClick={() => setViewDoc(null)}>
                   Close
                 </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* File Viewer Modal */}
+      <Dialog
+        open={!!viewFilesShare}
+        onOpenChange={(open) => {
+          if (!open) {
+            setViewFilesShare(null);
+            setSelectedFile(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Shared Files</DialogTitle>
+            <DialogDescription>
+              {viewFilesShare
+                ? `Files shared by ${viewFilesShare.patient.full_name}`
+                : "Loading shared files"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingFiles ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : !sharedFiles || sharedFiles.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              No files available for this shared access.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-2">
+              <div className="space-y-2 max-h-[420px] overflow-auto pr-2">
+                {sharedFiles.map((file) => (
+                  <Button
+                    key={file.record_id}
+                    variant={selectedFile?.record_id === file.record_id ? "default" : "outline"}
+                    className="w-full justify-start text-left h-auto py-3"
+                    onClick={() => setSelectedFile(file)}
+                  >
+                    <div className="truncate">
+                      <p className="font-medium truncate">{file.title}</p>
+                      <p className="text-xs opacity-80">{formatDate(file.record_date)}</p>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+
+              <div className="lg:col-span-2 border rounded-md min-h-[420px] p-3">
+                {!selectedFile ? (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    Select a file to preview
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">{selectedFile.title}</h3>
+                      <Button
+                        size="sm"
+                        onClick={() => window.open(selectedFile.file_path, "_blank")}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </Button>
+                    </div>
+                    {isImageFile(selectedFile) && (
+                      <img
+                        src={selectedFile.file_path}
+                        alt={selectedFile.title}
+                        className="max-h-[340px] w-full object-contain rounded-md border"
+                      />
+                    )}
+                    {isPdfFile(selectedFile) && (
+                      <iframe
+                        src={selectedFile.file_path}
+                        title={selectedFile.title}
+                        className="w-full h-[340px] rounded-md border"
+                      />
+                    )}
+                    {!isImageFile(selectedFile) && !isPdfFile(selectedFile) && (
+                      <div className="text-sm text-muted-foreground">
+                        Preview is not available for this file type. Use Download to open it.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

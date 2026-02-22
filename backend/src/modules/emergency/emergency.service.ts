@@ -1,6 +1,7 @@
 import prisma from '../../config/database';
 import { sendEmergencyAlert } from '../../utils/email.util';
 import { AppError } from '../../middleware/error.middleware';
+import { EmergencyContact } from '@prisma/client';
 
 interface CreateContactData {
     patientId: number;
@@ -20,6 +21,13 @@ interface CreateAlertData {
 }
 
 export class EmergencyService {
+    private formatContact(contact: EmergencyContact) {
+        return {
+            ...contact,
+            name: contact.contact_name,
+        };
+    }
+
     async createContact(adminId: number, data: CreateContactData) {
         // Verify patient ownership
         const patient = await prisma.patient.findFirst({
@@ -35,9 +43,8 @@ export class EmergencyService {
 
         const contact = await prisma.emergencyContact.create({
             data: {
-                admin_id: adminId,
                 patient_id: data.patientId,
-                name: data.name,
+                contact_name: data.name,
                 relationship: data.relationship,
                 phone_number: data.phoneNumber,
                 email: data.email,
@@ -45,26 +52,30 @@ export class EmergencyService {
             },
         });
 
-        return contact;
+        return this.formatContact(contact);
     }
 
     async getContacts(adminId: number) {
         const contacts = await prisma.emergencyContact.findMany({
             where: {
-                admin_id: adminId,
                 is_active: true,
+                patient: {
+                    admin_id: adminId,
+                },
             },
             orderBy: { priority: 'asc' },
         });
 
-        return contacts;
+        return contacts.map((contact) => this.formatContact(contact));
     }
 
     async updateContact(adminId: number, contactId: number, data: Partial<CreateContactData>) {
         const contact = await prisma.emergencyContact.findFirst({
             where: {
                 contact_id: contactId,
-                admin_id: adminId,
+                patient: {
+                    admin_id: adminId,
+                },
             },
         });
 
@@ -75,7 +86,7 @@ export class EmergencyService {
         const updated = await prisma.emergencyContact.update({
             where: { contact_id: contactId },
             data: {
-                name: data.name,
+                contact_name: data.name,
                 relationship: data.relationship,
                 phone_number: data.phoneNumber,
                 email: data.email,
@@ -83,14 +94,16 @@ export class EmergencyService {
             },
         });
 
-        return updated;
+        return this.formatContact(updated);
     }
 
     async deleteContact(adminId: number, contactId: number) {
         const contact = await prisma.emergencyContact.findFirst({
             where: {
                 contact_id: contactId,
-                admin_id: adminId,
+                patient: {
+                    admin_id: adminId,
+                },
             },
         });
 
@@ -122,7 +135,7 @@ export class EmergencyService {
         // Get emergency contacts
         const contacts = await prisma.emergencyContact.findMany({
             where: {
-                admin_id: adminId,
+                patient_id: data.patientId,
                 is_active: true,
             },
             orderBy: { priority: 'asc' },
@@ -183,7 +196,7 @@ export class EmergencyService {
                     },
                 },
             },
-            orderBy: { created_at: 'desc' },
+            orderBy: { sent_at: 'desc' },
         });
 
         return alerts;

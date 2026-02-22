@@ -16,12 +16,21 @@ interface RegisterData {
 interface LoginData {
     email: string;
     password: string;
+    userType?: string;
 }
+
+interface PasswordResetTokenData {
+    adminId: number;
+    expiresAt: Date;
+}
+
+const passwordResetTokens = new Map<string, PasswordResetTokenData>();
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 export class AuthService {
     async register(data: RegisterData) {
         // Check if admin already exists
-        const existingAdmin = await prisma.admin.findUnique({
+        const existingAdmin = await prisma.admin.findFirst({
             where: { email: data.email },
         });
 
@@ -54,8 +63,12 @@ export class AuthService {
         // Generate verification token (in production, store this in DB)
         const verificationToken = generateRandomToken();
 
-        // Send verification email
-        await sendVerificationEmail(admin.email, verificationToken);
+        // Sending email should not block account creation in dev/runtime SMTP issues
+        try {
+            await sendVerificationEmail(admin.email, verificationToken);
+        } catch (error) {
+            console.error('Verification email failed:', error);
+        }
 
         // If user_type is patient and fullName provided, auto-create primary Patient record
         if (data.userType === 'patient' && data.fullName) {
@@ -64,7 +77,7 @@ export class AuthService {
                     admin_id: admin.admin_id,
                     full_name: data.fullName,
                     address: '',
-                    date_of_birth: new Date('1900-01-01'),
+                    date_of_birth: new Date('2000-01-01'),
                     relationship: 'self',
                     is_primary: true,
                 },
@@ -78,10 +91,29 @@ export class AuthService {
     }
 
     async login(data: LoginData) {
-        // Find admin
-        const admin = await prisma.admin.findUnique({
+        const adminByEmail = await prisma.admin.findFirst({
             where: { email: data.email },
         });
+
+        if (!adminByEmail) {
+            throw new AppError(401, 'Invalid email or password');
+        }
+
+        if (data.userType && adminByEmail.user_type !== data.userType) {
+            throw new AppError(
+                401,
+                `This email is registered as ${adminByEmail.user_type}. Please switch to the ${adminByEmail.user_type} tab.`
+            );
+        }
+
+        const admin = data.userType
+            ? await prisma.admin.findFirst({
+                  where: {
+                      email: data.email,
+                      user_type: data.userType,
+                  },
+              })
+            : adminByEmail;
 
         if (!admin) {
             throw new AppError(401, 'Invalid email or password');
@@ -119,6 +151,7 @@ export class AuthService {
                 user_type: admin.user_type,
                 phone_number: admin.phone_number,
                 email_verified: admin.email_verified,
+                created_at: admin.created_at,
             },
             ...tokens,
         };
@@ -151,7 +184,7 @@ export class AuthService {
     }
 
     async forgotPassword(email: string) {
-        const admin = await prisma.admin.findUnique({
+        const admin = await prisma.admin.findFirst({
             where: { email },
         });
 
@@ -164,9 +197,17 @@ export class AuthService {
 
         // Generate reset token (in production, store this in DB with expiration)
         const resetToken = generateRandomToken();
+        passwordResetTokens.set(resetToken, {
+            adminId: admin.admin_id,
+            expiresAt: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
+        });
 
-        // Send reset email
-        await sendPasswordResetEmail(email, resetToken);
+        try {
+            await sendPasswordResetEmail(email, resetToken);
+        } catch (error) {
+            console.error('Password reset email failed:', error);
+            throw new AppError(500, 'Unable to send reset link right now. Please try again.');
+        }
 
         return {
             message: 'If the email exists, a password reset link has been sent',
@@ -174,14 +215,26 @@ export class AuthService {
     }
 
     async resetPassword(token: string, newPassword: string) {
-        // In production, verify token from database
-        // For now, we'll skip token verification
+        const tokenData = passwordResetTokens.get(token);
+        if (!tokenData) {
+            throw new AppError(400, 'Invalid or expired reset token');
+        }
+
+        if (tokenData.expiresAt.getTime() < Date.now()) {
+            passwordResetTokens.delete(token);
+            throw new AppError(400, 'Invalid or expired reset token');
+        }
 
         // Hash new password
         const passwordHash = await hashPassword(newPassword);
 
-        // Update password (you would find admin by token in production)
-        // This is a simplified version
+        await prisma.admin.update({
+            where: { admin_id: tokenData.adminId },
+            data: { password_hash: passwordHash },
+        });
+
+        passwordResetTokens.delete(token);
+
         return {
             message: 'Password reset successful',
         };

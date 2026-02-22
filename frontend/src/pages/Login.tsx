@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useProfileStore } from "@/stores/useProfileStore";
+import { patientsService } from "@/api/services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useProfile } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
-import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
+import { Shield, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useLogin } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,6 +19,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const loginMutation = useLogin();
+  const setProfiles = useProfileStore((state) => state.setProfiles);
+  const unlockProfile = useProfileStore((state) => state.unlockProfile);
+   
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,31 +30,42 @@ export default function Login() {
       const result = await loginMutation.mutateAsync({
         email,
         password,
+        userType,
       });
+      unlockProfile();
+      console.log("LOGIN RESULT 👉", result);
 
       // Navigate based on user type from the response
-      const userType = result.admin.user_type.toUpperCase();
+      const loggedInUserType = result.admin.user_type.toUpperCase();
 
-      if (userType === "PATIENT") {
+      if (loggedInUserType === "PATIENT") {
+        try {
+          const profiles = await patientsService.getPatients();
+          setProfiles(profiles);
+        } catch (_error) {
+          // Dashboard can still load profiles on mount; don't block login navigation.
+        }
         navigate("/patient/dashboard");
-      } else if (userType === "HOSPITAL") {
+      } else if (loggedInUserType === "HOSPITAL") {
         navigate("/hospital/dashboard");
       } else {
         // Default fallback
         navigate("/patient/dashboard");
       }
     } catch (error) {
-      // Error is already handled by the mutation's onError
+      toast.error(error instanceof Error ? error.message : "Login failed");
     }
   };
 
   return (
     <div className="min-h-screen flex">
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
+      <div className="flex-1 relative flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md animate-fade-in">
           {/* Logo of the app */}
           <Link to="/" className="flex items-center gap-2.5 mb-8">
-            <MediVaultLogoIcon size={40} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+              <Shield className="h-6 w-6 text-primary-foreground" />
+            </div>
             <span className="text-2xl font-semibold tracking-tight">mediVault</span>
           </Link>
 
@@ -58,13 +75,29 @@ export default function Login() {
           </p>
 
           <Tabs value={userType} onValueChange={(v) => setUserType(v as "patient" | "hospital")} className="mb-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="patient">Patient</TabsTrigger>
-              <TabsTrigger value="hospital">Hospital</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 rounded-lg bg-muted p-1">
+              <TabsTrigger
+                value="patient"
+                className="rounded-md border-b-2 border-transparent transition-all data-[state=active]:border-green-500 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Patient
+              </TabsTrigger>
+              <TabsTrigger
+                value="hospital"
+                className="rounded-md border-b-2 border-transparent transition-all data-[state=active]:border-green-500 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Hospital
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form
+  onSubmit={(e) => {
+    console.log("🔥 FORM SUBMITTED");
+    handleSubmit(e);
+  }}
+  className="space-y-5"
+>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -143,8 +176,8 @@ export default function Login() {
 
       <div className="hidden lg:flex flex-1 bg-primary items-center justify-center p-12">
         <div className="max-w-md text-center text-primary-foreground">
-          <div className="w-28 h-28 mx-auto mb-8 rounded-2xl bg-white/10 flex items-center justify-center">
-            <MediVaultLogoIcon size={72} />
+          <div className="w-24 h-24 mx-auto mb-8 rounded-2xl bg-white/10 flex items-center justify-center">
+            <Shield className="h-12 w-12" />
           </div>
           <h2 className="text-3xl font-bold mb-4">Secure Access</h2>
           <p className="text-lg opacity-90">

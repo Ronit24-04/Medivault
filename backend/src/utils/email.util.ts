@@ -7,7 +7,8 @@ const transporter = nodemailer.createTransport({
     secure: env.EMAIL_SECURE,
     auth: {
         user: env.EMAIL_USER,
-        pass: env.EMAIL_PASSWORD,
+        // Gmail app passwords are often copied with spaces; normalize before use.
+        pass: env.EMAIL_PASSWORD.replace(/\s+/g, ''),
     },
 });
 
@@ -119,5 +120,39 @@ export const sendEmergencyAlert = async (
       </div>
     `,
         text: `EMERGENCY ALERT: ${patientName} has triggered an emergency alert. ${alertMessage}${location ? ` Location: ${location}` : ''}`,
+    });
+};
+
+export const sendSharedAccessEmail = async (
+    recipientEmail: string,
+    options: {
+        providerName: string;
+        accessLevel: string;
+        expiresOn?: string;
+        shareUrl: string;
+    }
+): Promise<void> => {
+    await sendEmail({
+        to: recipientEmail,
+        subject: 'MediVault: Access Has Been Shared With You',
+        html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Access Has Been Shared</h2>
+        <p>Hello ${options.providerName},</p>
+        <p>A MediVault patient has shared medical record access with you.</p>
+        <div style="background-color: #eff6ff; padding: 14px; border-radius: 6px; margin: 16px 0;">
+          <p style="margin: 0;"><strong>Access Level:</strong> ${options.accessLevel}</p>
+          <p style="margin: 8px 0 0 0;"><strong>Access Duration:</strong> ${options.expiresOn || 'No expiration'}</p>
+        </div>
+        <p>
+          <a href="${options.shareUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px;">
+            Click to View Shared Access
+          </a>
+        </p>
+        <p>Or open this link directly:</p>
+        <p style="color: #666; word-break: break-all;">${options.shareUrl}</p>
+      </div>
+    `,
+        text: `Access has been shared with you on MediVault. Access level: ${options.accessLevel}. View: ${options.shareUrl}`,
     });
 };

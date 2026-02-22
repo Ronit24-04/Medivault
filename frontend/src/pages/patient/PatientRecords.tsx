@@ -26,7 +26,6 @@ import {
   Plus,
   FileText,
   Download,
-  Share2,
   Eye,
   TestTube,
   Activity,
@@ -62,7 +61,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useRecords, useDeleteRecord } from "@/hooks/useRecords";
+import { useDeleteRecord, useRecords } from "@/hooks/useRecords";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { format } from "date-fns";
 import { MedicalRecord } from "@/api/types";
@@ -115,7 +114,7 @@ export default function PatientRecords() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [viewingRecord, setViewingRecord] = useState<MedicalRecord | null>(null);
-  const [deletingRecord, setDeletingRecord] = useState<MedicalRecord | null>(null);
+  const [recordToDelete, setRecordToDelete] = useState<MedicalRecord | null>(null);
 
   const handleDownload = (record: MedicalRecord) => {
     const a = document.createElement("a");
@@ -130,19 +129,28 @@ export default function PatientRecords() {
 
   const currentProfile = useProfileStore((s) => s.currentProfile);
   const patientId = currentProfile?.patient_id;
+  const deleteRecordMutation = useDeleteRecord();
 
   // Fetch medical records
   const { data: records, isLoading, error } = useRecords(patientId || 0);
 
-  // Delete mutation
-  const { mutate: deleteRecord, isPending: isDeleting } = useDeleteRecord();
+  const handleDeleteRecordClick = (record: MedicalRecord) => {
+    setRecordToDelete(record);
+  };
 
-  const handleDeleteConfirm = () => {
-    if (!deletingRecord || !patientId) return;
-    deleteRecord(
-      { patientId, recordId: deletingRecord.record_id },
-      { onSettled: () => setDeletingRecord(null) }
-    );
+  const confirmDeleteRecord = async () => {
+    if (!patientId || !recordToDelete) return;
+
+    await deleteRecordMutation.mutateAsync({
+      patientId,
+      recordId: recordToDelete.record_id,
+    });
+
+    if (viewingRecord?.record_id === recordToDelete.record_id) {
+      setViewingRecord(null);
+    }
+
+    setRecordToDelete(null);
   };
 
   // Filter records based on search and category
@@ -365,11 +373,12 @@ export default function PatientRecords() {
                                   Download
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                  onClick={() => setDeletingRecord(record)}
+                                  onClick={() => handleDeleteRecordClick(record)}
+                                  className="text-destructive focus:text-destructive"
+                                  disabled={deleteRecordMutation.isPending}
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
+                                  Delete Record
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -473,44 +482,31 @@ export default function PatientRecords() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog
-        open={!!deletingRecord}
-        onOpenChange={(open) => !open && !isDeleting && setDeletingRecord(null)}
+        open={!!recordToDelete}
+        onOpenChange={(open) => {
+          if (!open) setRecordToDelete(null);
+        }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-sm backdrop-blur-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-destructive" />
-              Delete Record?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Confirm</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete{" "}
-              <span className="font-semibold text-foreground">
-                {deletingRecord?.title}
-              </span>{" "}
-              from your account and remove the file from our servers. This
-              action cannot be undone.
+              {recordToDelete
+                ? `Delete "${recordToDelete.title}"? This action cannot be undone.`
+                : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteRecordMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
+              onClick={confirmDeleteRecord}
+              disabled={deleteRecordMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
             >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </>
-              )}
+              {deleteRecordMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

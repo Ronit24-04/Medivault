@@ -1,4 +1,4 @@
-import apiClient from '../client';
+import apiClient, { handleApiError } from '../client';
 
 export interface SharedAccess {
     share_id: number;
@@ -51,27 +51,47 @@ export interface SharedAccessStats {
 
 class SharedAccessService {
     async getSharedAccess(patientId: number): Promise<SharedAccess[]> {
-        const response = await apiClient.get(`/patients/${patientId}/shared-access`);
-        return response.data.data;
+        try {
+            const response = await apiClient.get(`/patients/${patientId}/shared-access`);
+            return response.data.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
     }
 
     async createShare(patientId: number, data: CreateShareRequest): Promise<SharedAccess> {
-        const response = await apiClient.post(`/patients/${patientId}/shared-access`, data);
-        return response.data.data;
+        try {
+            const response = await apiClient.post(`/patients/${patientId}/shared-access`, data);
+            return response.data.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
     }
 
     async updateShare(patientId: number, shareId: number, data: UpdateShareRequest): Promise<SharedAccess> {
-        const response = await apiClient.put(`/patients/${patientId}/shared-access/${shareId}`, data);
-        return response.data.data;
+        try {
+            const response = await apiClient.put(`/patients/${patientId}/shared-access/${shareId}`, data);
+            return response.data.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
     }
 
     async revokeShare(patientId: number, shareId: number): Promise<void> {
-        await apiClient.delete(`/patients/${patientId}/shared-access/${shareId}`);
+        try {
+            await apiClient.delete(`/patients/${patientId}/shared-access/${shareId}`);
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
     }
 
     async getStats(patientId: number): Promise<SharedAccessStats> {
-        const response = await apiClient.get(`/patients/${patientId}/shared-access/stats`);
-        return response.data.data;
+        try {
+            const response = await apiClient.get(`/patients/${patientId}/shared-access/stats`);
+            return response.data.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
     }
 }
 

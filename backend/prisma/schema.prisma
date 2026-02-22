@@ -36,6 +36,7 @@ model Patient {
   blood_type       String?          @db.VarChar(5)
   height_cm        Float?           @db.Float
   weight_kg        Float?           @db.Float
+  profile_image    String?          @db.VarChar(255)
   relationship     String           @db.VarChar(50)
   emergency_pin    String?          @db.VarChar(6)
   is_primary       Boolean          @default(false) @db.TinyInt
