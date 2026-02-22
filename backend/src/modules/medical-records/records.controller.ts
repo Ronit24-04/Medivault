@@ -3,16 +3,17 @@ import { recordsService } from './records.service';
 import { AuthRequest } from '../../middleware/auth.middleware';
 
 export class RecordsController {
-    async uploadRecord(req: AuthRequest, res: Response, next: NextFunction) {
+    async uploadRecord(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(req.params.patientId as string);
             const file = req.file;
 
             if (!file) {
-                return res.status(400).json({
+                res.status(400).json({
                     success: false,
                     message: 'No file uploaded',
                 });
+                return;
             }
 
             const recordData = {
@@ -36,7 +37,7 @@ export class RecordsController {
 
     async getRecords(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(req.params.patientId as string);
             const records = await recordsService.getRecords(req.admin!.adminId, patientId, req.query);
 
             res.status(200).json({
@@ -50,8 +51,8 @@ export class RecordsController {
 
     async getRecordById(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
-            const recordId = parseInt(req.params.recordId);
+            const patientId = parseInt(req.params.patientId as string);
+            const recordId = parseInt(req.params.recordId as string);
             const record = await recordsService.getRecordById(req.admin!.adminId, patientId, recordId);
 
             res.status(200).json({
@@ -65,8 +66,8 @@ export class RecordsController {
 
     async updateRecord(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
-            const recordId = parseInt(req.params.recordId);
+            const patientId = parseInt(req.params.patientId as string);
+            const recordId = parseInt(req.params.recordId as string);
             const record = await recordsService.updateRecord(req.admin!.adminId, patientId, recordId, req.body);
 
             res.status(200).json({
@@ -81,8 +82,8 @@ export class RecordsController {
 
     async deleteRecord(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
-            const recordId = parseInt(req.params.recordId);
+            const patientId = parseInt(req.params.patientId as string);
+            const recordId = parseInt(req.params.recordId as string);
             const result = await recordsService.deleteRecord(req.admin!.adminId, patientId, recordId);
 
             res.status(200).json({
@@ -96,7 +97,7 @@ export class RecordsController {
 
     async getTimeline(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(req.params.patientId as string);
             const timeline = await recordsService.getTimeline(req.admin!.adminId, patientId);
 
             res.status(200).json({

@@ -35,8 +35,10 @@ import {
   Calendar,
   User,
   Loader2,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
-import { useHospitalSharedRecords } from "@/hooks/useHospital";
+import { useHospitalSharedRecords, useAcceptShare, useRejectShare } from "@/hooks/useHospital";
 import { HospitalSharedRecord } from "@/api/services/hospital-admin.service";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -50,13 +52,33 @@ const formatDate = (dateString?: string) => {
   }
 };
 
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case "active":
+      return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
+    case "pending":
+      return <Badge className="bg-warning/10 text-warning border-warning/20">Pending</Badge>;
+    case "expired":
+      return <Badge variant="secondary">Expired</Badge>;
+    case "revoked":
+      return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Revoked</Badge>;
+    case "rejected":
+      return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Rejected</Badge>;
+    default:
+      return <Badge variant="secondary">{status}</Badge>;
+  }
+};
+
 export default function HospitalDocuments() {
   const { data: sharedRecords, isLoading } = useHospitalSharedRecords();
+  const { mutate: acceptShare, isPending: isAccepting } = useAcceptShare();
+  const { mutate: rejectShare, isPending: isRejecting } = useRejectShare();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewDoc, setViewDoc] = useState<HospitalSharedRecord | null>(null);
+  const [actioningShareId, setActioningShareId] = useState<number | null>(null);
 
   const filtered = (sharedRecords ?? []).filter((doc) => {
     const matchesSearch =
@@ -71,6 +93,16 @@ export default function HospitalDocuments() {
 
   const handleDownload = (doc: HospitalSharedRecord) => {
     toast.info(`Requesting records access for ${doc.patient.full_name}.`);
+  };
+
+  const handleAccept = (shareId: number) => {
+    setActioningShareId(shareId);
+    acceptShare(shareId, { onSettled: () => setActioningShareId(null) });
+  };
+
+  const handleReject = (shareId: number) => {
+    setActioningShareId(shareId);
+    rejectShare(shareId, { onSettled: () => setActioningShareId(null) });
   };
 
   return (
@@ -116,9 +148,11 @@ export default function HospitalDocuments() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="expired">Expired</SelectItem>
                   <SelectItem value="revoked">Revoked</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -146,65 +180,101 @@ export default function HospitalDocuments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((doc) => (
-                      <TableRow key={doc.share_id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <div>
-                              <span className="font-medium block">{doc.patient.full_name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ID: {doc.patient.patient_id}
-                              </span>
+                    {filtered.map((doc) => {
+                      const isActioning = actioningShareId === doc.share_id;
+                      return (
+                        <TableRow key={doc.share_id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <div>
+                                <span className="font-medium block">{doc.patient.full_name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  ID: {doc.patient.patient_id}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <Badge variant="outline" className="mb-1">
-                              {doc.provider_type}
-                            </Badge>
-                            <p className="text-sm text-muted-foreground truncate max-w-[150px]">
-                              {doc.provider_name}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <span className="text-sm">{doc.access_level}</span>
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            {formatDate(doc.shared_on)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={doc.status === "active" ? "default" : "secondary"}>
-                            {doc.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="View"
-                              onClick={() => setViewDoc(doc)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Download"
-                              onClick={() => handleDownload(doc)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <Badge variant="outline" className="mb-1">
+                                {doc.provider_type}
+                              </Badge>
+                              <p className="text-sm text-muted-foreground truncate max-w-[150px]">
+                                {doc.provider_name}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <span className="text-sm">{doc.access_level}</span>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              {formatDate(doc.shared_on)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(doc.status)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              {doc.status === "pending" ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Accept"
+                                    disabled={isActioning || isAccepting || isRejecting}
+                                    onClick={() => handleAccept(doc.share_id)}
+                                    className="text-success hover:text-success hover:bg-success/10"
+                                  >
+                                    {isActioning ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <CheckCircle className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Reject"
+                                    disabled={isActioning || isAccepting || isRejecting}
+                                    onClick={() => handleReject(doc.share_id)}
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    {isActioning ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <XCircle className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title="View"
+                                    onClick={() => setViewDoc(doc)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Download"
+                                    onClick={() => handleDownload(doc)}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
 
@@ -243,9 +313,7 @@ export default function HospitalDocuments() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
-                  <Badge variant={viewDoc.status === "active" ? "default" : "secondary"}>
-                    {viewDoc.status}
-                  </Badge>
+                  {getStatusBadge(viewDoc.status)}
                 </div>
               </div>
               <div>

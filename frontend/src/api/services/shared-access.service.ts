@@ -1,4 +1,5 @@
 import apiClient from '../client';
+import { Hospital } from '../types';
 
 export interface SharedAccess {
     share_id: number;
@@ -39,7 +40,7 @@ export interface CreateShareRequest {
 export interface UpdateShareRequest {
     accessLevel?: string;
     expiresOn?: string;
-    status?: 'active' | 'expired' | 'revoked';
+    status?: 'active' | 'expired' | 'revoked' | 'pending' | 'rejected';
 }
 
 export interface SharedAccessStats {
@@ -72,6 +73,12 @@ class SharedAccessService {
     async getStats(patientId: number): Promise<SharedAccessStats> {
         const response = await apiClient.get(`/patients/${patientId}/shared-access/stats`);
         return response.data.data;
+    }
+
+    async searchHospitals(query: string): Promise<Hospital[]> {
+        if (!query || query.trim().length < 2) return [];
+        const response = await apiClient.get('/hospitals', { params: { search: query.trim() } });
+        return response.data.data ?? [];
     }
 }
 

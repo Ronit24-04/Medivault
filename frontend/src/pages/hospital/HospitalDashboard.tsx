@@ -39,6 +39,7 @@ export default function HospitalDashboard() {
 
   const hospitalName = hospitalProfile?.hospital_name || authProfile?.email || "Hospital";
   const activeRecords = sharedRecords?.filter((r) => r.status === "active") ?? [];
+  const pendingShares = sharedRecords?.filter((r) => r.status === "pending") ?? [];
   const pendingAlerts = alerts?.filter((a) => a.status === "sent") ?? [];
   const uniquePatients = new Set(sharedRecords?.map((r) => r.patient_id)).size;
 
@@ -170,6 +171,24 @@ export default function HospitalDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Pending Shared Access Banner */}
+        {pendingShares.length > 0 && (
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Bell className="h-5 w-5 text-warning flex-shrink-0" />
+                <p className="font-medium">
+                  {pendingShares.length} pending access request
+                  {pendingShares.length > 1 ? "s" : ""} awaiting your review
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="border-warning/50 text-warning hover:bg-warning/10" asChild>
+                <Link to="/hospital/documents">Review</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Alerts Summary Banner */}
         {pendingAlerts.length > 0 && (

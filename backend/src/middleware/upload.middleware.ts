@@ -6,7 +6,7 @@ import { env } from '../config/env';
 // Cloudinary storage for medical records
 const cloudinaryStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: async (req, file) => {
+    params: async (_req, file) => {
         return {
             folder: 'medivault/medical-records',
             allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
@@ -21,7 +21,7 @@ const cloudinaryStorage = new CloudinaryStorage({
 // Cloudinary storage for profile pictures
 const profilePictureStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: async (req, file) => {
+    params: async (_req, _file) => {
         return {
             folder: 'medivault/profiles',
             allowed_formats: ['jpg', 'jpeg', 'png'],
@@ -34,7 +34,7 @@ const profilePictureStorage = new CloudinaryStorage({
 });
 
 // File filter
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedTypes = env.ALLOWED_FILE_TYPES.split(',');
 
     if (allowedTypes.includes(file.mimetype)) {
@@ -56,7 +56,7 @@ export const uploadMedicalRecord = multer({
 // Upload middleware for profile pictures
 export const uploadProfilePicture = multer({
     storage: profilePictureStorage,
-    fileFilter: (req, file, cb) => {
+    fileFilter: (_req, file, cb) => {
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
         } else {

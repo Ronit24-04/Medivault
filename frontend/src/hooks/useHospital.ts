@@ -53,3 +53,31 @@ export const useAcknowledgeHospitalAlert = () => {
         },
     });
 };
+
+export const useAcceptShare = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (shareId: number) => hospitalAdminService.acceptShare(shareId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['hospital-shared-records'] });
+            toast.success('Access request accepted!');
+        },
+        onError: (error: Error) => {
+            toast.error(error.message || 'Failed to accept request');
+        },
+    });
+};
+
+export const useRejectShare = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (shareId: number) => hospitalAdminService.rejectShare(shareId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['hospital-shared-records'] });
+            toast.success('Access request rejected.');
+        },
+        onError: (error: Error) => {
+            toast.error(error.message || 'Failed to reject request');
+        },
+    });
+};

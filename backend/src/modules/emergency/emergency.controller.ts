@@ -30,7 +30,7 @@ export class EmergencyController {
 
     async updateContact(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const contactId = parseInt(req.params.contactId);
+            const contactId = parseInt(req.params.contactId as string);
             const contact = await emergencyService.updateContact(req.admin!.adminId, contactId, req.body);
             res.status(200).json({
                 success: true,
@@ -44,7 +44,7 @@ export class EmergencyController {
 
     async deleteContact(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const contactId = parseInt(req.params.contactId);
+            const contactId = parseInt(req.params.contactId as string);
             const result = await emergencyService.deleteContact(req.admin!.adminId, contactId);
             res.status(200).json({
                 success: true,
@@ -82,7 +82,7 @@ export class EmergencyController {
 
     async acknowledgeAlert(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const alertId = parseInt(req.params.alertId);
+            const alertId = parseInt(req.params.alertId as string);
             const alert = await emergencyService.acknowledgeAlert(req.admin!.adminId, alertId);
             res.status(200).json({
                 success: true,

@@ -1,5 +1,5 @@
 import prisma from '../../config/database';
-import { hashPassword, comparePassword, hashPin, comparePin } from '../../utils/bcrypt.util';
+import { hashPassword, comparePassword } from '../../utils/bcrypt.util';
 import { generateTokenPair, verifyRefreshToken } from '../../utils/jwt.util';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../utils/email.util';
 import { generateRandomToken } from '../../utils/helpers.util';
@@ -173,27 +173,21 @@ export class AuthService {
         };
     }
 
-    async resetPassword(token: string, newPassword: string) {
-        // In production, verify token from database
-        // For now, we'll skip token verification
-
-        // Hash new password
-        const passwordHash = await hashPassword(newPassword);
-
-        // Update password (you would find admin by token in production)
-        // This is a simplified version
+    async resetPassword(_token: string, _newPassword: string) {
+        // In production, verify token from database and hash the new password
+        // This is a stub implementation
         return {
             message: 'Password reset successful',
         };
     }
 
-    async setupEmergencyPin(adminId: number, pin: string) {
+    async setupEmergencyPin(_adminId: number, _pin: string): Promise<{ message: string }> {
         // Emergency PIN is stored on Patient model, not Admin
         // This needs to be refactored to work with patient_id
         throw new AppError(501, 'Emergency PIN setup not yet implemented for this user type');
     }
 
-    async verifyEmergencyPin(email: string, pin: string) {
+    async verifyEmergencyPin(_email: string, _pin: string): Promise<{ message: string; patients: never[] }> {
         // Emergency PIN is stored on Patient model, not Admin
         // This needs to be refactored
         throw new AppError(501, 'Emergency PIN verification not yet implemented');

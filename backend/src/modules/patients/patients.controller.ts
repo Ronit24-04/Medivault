@@ -30,7 +30,7 @@ export class PatientsController {
 
     async getPatientById(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(req.params.patientId as string);
             const patient = await patientsService.getPatientById(req.admin!.adminId, patientId);
             res.status(200).json({
                 success: true,
@@ -43,7 +43,7 @@ export class PatientsController {
 
     async updatePatient(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(req.params.patientId as string);
             const patient = await patientsService.updatePatient(req.admin!.adminId, patientId, req.body);
             res.status(200).json({
                 success: true,
@@ -57,7 +57,7 @@ export class PatientsController {
 
     async deletePatient(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(req.params.patientId as string);
             const result = await patientsService.deletePatient(req.admin!.adminId, patientId);
             res.status(200).json({
                 success: true,
@@ -70,7 +70,7 @@ export class PatientsController {
 
     async getEmergencyInfo(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(req.params.patientId as string);
             const info = await patientsService.getEmergencyInfo(req.admin!.adminId, patientId);
             res.status(200).json({
                 success: true,

@@ -53,6 +53,28 @@ export class HospitalAdminController {
             next(error);
         }
     }
+
+    async acceptShare(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const shareId = parseInt(req.params.shareId as string, 10);
+            const share = await hospitalAdminService.acceptShare(adminId, shareId);
+            res.json({ success: true, message: 'Access request accepted', data: share });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async rejectShare(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const shareId = parseInt(req.params.shareId as string, 10);
+            const share = await hospitalAdminService.rejectShare(adminId, shareId);
+            res.json({ success: true, message: 'Access request rejected', data: share });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export const hospitalAdminController = new HospitalAdminController();

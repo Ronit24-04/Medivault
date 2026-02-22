@@ -15,16 +15,17 @@ export class HospitalsController {
         }
     }
 
-    async getHospitalById(req: AuthRequest, res: Response, next: NextFunction) {
+    async getHospitalById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const hospitalId = parseInt(req.params.hospitalId);
+            const hospitalId = parseInt(req.params.hospitalId as string);
             const hospital = await hospitalsService.getHospitalById(hospitalId);
 
             if (!hospital) {
-                return res.status(404).json({
+                res.status(404).json({
                     success: false,
                     message: 'Hospital not found',
                 });
+                return;
             }
 
             res.status(200).json({

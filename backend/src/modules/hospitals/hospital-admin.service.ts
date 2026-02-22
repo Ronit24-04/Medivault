@@ -113,6 +113,54 @@ export class HospitalAdminService {
             },
         });
     }
+
+    async acceptShare(adminId: number, shareId: number) {
+        const hospital = await this.getHospitalByAdminId(adminId);
+        if (!hospital) throw new AppError(404, 'Hospital profile not found');
+
+        const share = await prisma.sharedAccess.findFirst({
+            where: {
+                share_id: shareId,
+                hospital_id: hospital.hospital_id,
+            },
+        });
+
+        if (!share) throw new AppError(404, 'Shared access not found');
+
+        return prisma.sharedAccess.update({
+            where: { share_id: shareId },
+            data: { status: 'active' },
+            include: {
+                patient: {
+                    select: { patient_id: true, full_name: true, date_of_birth: true, gender: true },
+                },
+            },
+        });
+    }
+
+    async rejectShare(adminId: number, shareId: number) {
+        const hospital = await this.getHospitalByAdminId(adminId);
+        if (!hospital) throw new AppError(404, 'Hospital profile not found');
+
+        const share = await prisma.sharedAccess.findFirst({
+            where: {
+                share_id: shareId,
+                hospital_id: hospital.hospital_id,
+            },
+        });
+
+        if (!share) throw new AppError(404, 'Shared access not found');
+
+        return prisma.sharedAccess.update({
+            where: { share_id: shareId },
+            data: { status: 'rejected' },
+            include: {
+                patient: {
+                    select: { patient_id: true, full_name: true, date_of_birth: true, gender: true },
+                },
+            },
+        });
+    }
 }
 
 export const hospitalAdminService = new HospitalAdminService();

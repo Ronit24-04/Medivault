@@ -90,4 +90,22 @@ export const hospitalAdminService = {
             throw new Error(handleApiError(error));
         }
     },
+
+    async acceptShare(shareId: number): Promise<HospitalSharedRecord> {
+        try {
+            const response = await apiClient.post<ApiResponse<HospitalSharedRecord>>(`/hospital/shared-records/${shareId}/accept`);
+            return response.data.data!;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
+
+    async rejectShare(shareId: number): Promise<HospitalSharedRecord> {
+        try {
+            const response = await apiClient.post<ApiResponse<HospitalSharedRecord>>(`/hospital/shared-records/${shareId}/reject`);
+            return response.data.data!;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
 };

@@ -93,6 +93,8 @@ export class SharedAccessService {
                 provider_type: data.providerType,
                 access_level: data.accessLevel,
                 expires_on: data.expiresOn ? new Date(data.expiresOn) : null,
+                // Hospital shares start as pending until the hospital accepts
+                status: data.providerType === 'Hospital' ? 'pending' : 'active',
             },
             include: {
                 hospital: {

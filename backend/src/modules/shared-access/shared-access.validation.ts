@@ -22,7 +22,7 @@ export const updateShareSchema = z.object({
     body: z.object({
         accessLevel: z.string().max(100).optional(),
         expiresOn: z.string().optional(),
-        status: z.enum(['active', 'expired', 'revoked']).optional(),
+        status: z.enum(['active', 'expired', 'revoked', 'pending', 'rejected']).optional(),
     }).refine((data) => Object.keys(data).length > 0, {
         message: 'At least one field must be provided',
     }),

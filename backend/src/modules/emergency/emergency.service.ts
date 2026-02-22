@@ -35,9 +35,8 @@ export class EmergencyService {
 
         const contact = await prisma.emergencyContact.create({
             data: {
-                admin_id: adminId,
                 patient_id: data.patientId,
-                name: data.name,
+                contact_name: data.name,
                 relationship: data.relationship,
                 phone_number: data.phoneNumber,
                 email: data.email,
@@ -49,9 +48,16 @@ export class EmergencyService {
     }
 
     async getContacts(adminId: number) {
+        // Get all patients belonging to this admin to filter contacts
+        const patients = await prisma.patient.findMany({
+            where: { admin_id: adminId },
+            select: { patient_id: true },
+        });
+        const patientIds = patients.map(p => p.patient_id);
+
         const contacts = await prisma.emergencyContact.findMany({
             where: {
-                admin_id: adminId,
+                patient_id: { in: patientIds },
                 is_active: true,
             },
             orderBy: { priority: 'asc' },
@@ -61,21 +67,20 @@ export class EmergencyService {
     }
 
     async updateContact(adminId: number, contactId: number, data: Partial<CreateContactData>) {
+        // Find contact and verify via patient ownership
         const contact = await prisma.emergencyContact.findFirst({
-            where: {
-                contact_id: contactId,
-                admin_id: adminId,
-            },
+            where: { contact_id: contactId },
+            include: { patient: { select: { admin_id: true } } },
         });
 
-        if (!contact) {
+        if (!contact || contact.patient.admin_id !== adminId) {
             throw new AppError(404, 'Contact not found');
         }
 
         const updated = await prisma.emergencyContact.update({
             where: { contact_id: contactId },
             data: {
-                name: data.name,
+                contact_name: data.name,
                 relationship: data.relationship,
                 phone_number: data.phoneNumber,
                 email: data.email,
@@ -88,13 +93,11 @@ export class EmergencyService {
 
     async deleteContact(adminId: number, contactId: number) {
         const contact = await prisma.emergencyContact.findFirst({
-            where: {
-                contact_id: contactId,
-                admin_id: adminId,
-            },
+            where: { contact_id: contactId },
+            include: { patient: { select: { admin_id: true } } },
         });
 
-        if (!contact) {
+        if (!contact || contact.patient.admin_id !== adminId) {
             throw new AppError(404, 'Contact not found');
         }
 
@@ -122,7 +125,7 @@ export class EmergencyService {
         // Get emergency contacts
         const contacts = await prisma.emergencyContact.findMany({
             where: {
-                admin_id: adminId,
+                patient_id: data.patientId,
                 is_active: true,
             },
             orderBy: { priority: 'asc' },
@@ -183,7 +186,7 @@ export class EmergencyService {
                     },
                 },
             },
-            orderBy: { created_at: 'desc' },
+            orderBy: { sent_at: 'desc' },
         });
 
         return alerts;
