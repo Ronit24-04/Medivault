@@ -348,6 +348,15 @@ export default function PatientRecords() {
                             >
                               <Download className="h-4 w-4" />
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="hidden sm:inline-flex text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Delete record"
+                              onClick={() => setDeletingRecord(record)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon-sm">

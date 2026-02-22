@@ -1,5 +1,6 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middleware/error.middleware';
+import cloudinary from '../../config/cloudinary';
 
 interface UploadRecordData {
     recordType: string;
@@ -184,11 +185,51 @@ export class RecordsService {
             throw new AppError(404, 'Record not found');
         }
 
+        // Delete from Cloudinary before removing the DB row
+        if (record.file_path) {
+            try {
+                const publicId = this.extractCloudinaryPublicId(record.file_path);
+                const resourceType = record.file_type?.startsWith('image/') ? 'image' : 'raw';
+                await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+            } catch (cloudinaryError) {
+                // Log but don't block deletion – the DB row should still be removed
+                console.error('Failed to delete file from Cloudinary:', cloudinaryError);
+            }
+        }
+
         await prisma.medicalRecord.delete({
             where: { record_id: recordId },
         });
 
         return { message: 'Record deleted successfully' };
+    }
+
+    /**
+     * Extracts the Cloudinary public_id from a full Cloudinary URL.
+     * Example URL:
+     *   https://res.cloudinary.com/<cloud>/image/upload/v1234567890/medivault/medical-records/abc123.pdf
+     * Extracted public_id:
+     *   medivault/medical-records/abc123
+     */
+    private extractCloudinaryPublicId(fileUrl: string): string {
+        // Split on "/upload/" and take everything after it
+        const uploadIndex = fileUrl.indexOf('/upload/');
+        if (uploadIndex === -1) {
+            throw new Error(`Unable to extract public_id from Cloudinary URL: ${fileUrl}`);
+        }
+
+        let afterUpload = fileUrl.substring(uploadIndex + '/upload/'.length);
+
+        // Strip the optional version segment (e.g. "v1234567890/")
+        afterUpload = afterUpload.replace(/^v\d+\//, '');
+
+        // Strip the file extension
+        const dotIndex = afterUpload.lastIndexOf('.');
+        if (dotIndex !== -1) {
+            afterUpload = afterUpload.substring(0, dotIndex);
+        }
+
+        return afterUpload;
     }
 
     async getTimeline(adminId: number, patientId: number) {
