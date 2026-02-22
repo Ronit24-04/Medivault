@@ -18,9 +18,9 @@ export class EmergencyAlertsService {
         const a =
             Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(this.toRadians(fromLat)) *
-                Math.cos(this.toRadians(toLat)) *
-                Math.sin(dLng / 2) *
-                Math.sin(dLng / 2);
+            Math.cos(this.toRadians(toLat)) *
+            Math.sin(dLng / 2) *
+            Math.sin(dLng / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return earthRadiusKm * c;
     }
@@ -113,8 +113,8 @@ export class EmergencyAlertsService {
                         : null,
                 alert_message: '🚨 EMERGENCY ALERT FROM MEDIVAULT',
                 status: 'sent',
-                sent_to_hospital: Boolean(nearestHospitalId),
-                sent_to_contacts: true,
+                sent_to_hospital: nearestHospitalId ? (true as any) : (false as any),
+                sent_to_contacts: true as any,
                 sent_at: new Date(),
             },
         });
@@ -126,7 +126,7 @@ export class EmergencyAlertsService {
             throw new AppError(500, 'Twilio SDK is not installed');
         }
 
-        const client = twilioClientFactory(accountSid, authToken);
+        const client: any = twilioClientFactory(accountSid, authToken);
 
         try {
             await Promise.all(
@@ -140,6 +140,8 @@ export class EmergencyAlertsService {
             );
         } catch (error: any) {
             const twilioMessage = error?.message || 'Failed to send emergency SMS';
+            console.error('Twilio error:', error);
+            // Don't throw if we want the alert record to stay, but here we throw
             throw new AppError(500, twilioMessage);
         }
 

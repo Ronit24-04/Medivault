@@ -18,7 +18,7 @@ interface CreatePatientData {
 }
 
 export class PatientsService {
-    async createPatient(adminId: number, data: CreatePatientData) {
+    async createPatient(adminId: number, data: CreatePatientData): Promise<any> {
         // If this is set as primary, unset other primary patients
         if (data.isPrimary) {
             await prisma.patient.updateMany({
@@ -142,7 +142,7 @@ export class PatientsService {
             where: { patient_id: patientId },
             data: {
                 profile_image: profileImagePath,
-            },
+            } as any,
         });
 
         return patient;

@@ -57,7 +57,7 @@ export class HospitalAdminController {
     async updateSharedRecordStatus(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const adminId = req.admin!.adminId;
-            const shareId = parseInt(req.params.shareId as string, 10);
+            const shareId = parseInt((req.params as any).shareId, 10);
             const { status } = req.body;
 
             if (status !== 'acknowledged' && status !== 'rejected') {
@@ -78,7 +78,7 @@ export class HospitalAdminController {
     async acknowledgeAlert(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const adminId = req.admin!.adminId;
-            const alertId = parseInt(req.params.alertId as string, 10);
+            const alertId = parseInt((req.params as any).alertId, 10);
             const alert = await hospitalAdminService.acknowledgeAlert(adminId, alertId);
             res.json({ success: true, data: alert });
         } catch (error) {
@@ -89,7 +89,7 @@ export class HospitalAdminController {
     async acceptShare(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const adminId = req.admin!.adminId;
-            const shareId = parseInt(req.params.shareId as string, 10);
+            const shareId = parseInt((req.params as any).shareId, 10);
             const share = await hospitalAdminService.acceptShare(adminId, shareId);
             res.json({ success: true, message: 'Access request accepted', data: share });
         } catch (error) {
@@ -100,7 +100,7 @@ export class HospitalAdminController {
     async rejectShare(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const adminId = req.admin!.adminId;
-            const shareId = parseInt(req.params.shareId as string, 10);
+            const shareId = parseInt((req.params as any).shareId, 10);
             const share = await hospitalAdminService.rejectShare(adminId, shareId);
             res.json({ success: true, message: 'Access request rejected', data: share });
         } catch (error) {
