@@ -3,6 +3,8 @@ import app from './app';
 import { env } from './config/env';
 import prisma from './config/database';
 
+
+
 const PORT = parseInt(env.PORT) || 3000;
 
 const startServer = async () => {

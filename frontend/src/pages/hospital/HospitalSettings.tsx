@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useHospitalProfile, useUpdateHospitalProfile } from "@/hooks/useHospital";
 import { useProfile } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function HospitalSettings() {
   const { data: authProfile } = useProfile();
@@ -26,33 +27,133 @@ export default function HospitalSettings() {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [stateVal, setStateVal] = useState("");
+  const [zipCode, setZipCode] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [prefilled, setPrefilled] = useState(false);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
-  // Pre-fill form once — only on first load so user edits aren't overwritten
+  // Sync form from backend profile data
   useEffect(() => {
-    if (prefilled) return;
     if (isLoading) return;
 
-    // hospitalProfile is null for brand-new accounts (no Hospital row yet)
     if (hospitalProfile) {
       setHospitalName(hospitalProfile.hospital_name ?? "");
       setAddress(hospitalProfile.address ?? "");
       setCity(hospitalProfile.city ?? "");
       setStateVal(hospitalProfile.state ?? "");
-      setPhone(hospitalProfile.phone_number ?? "");
+      setZipCode("");
+      setPhone(hospitalProfile.phone_number ?? authProfile?.phone_number ?? "");
       setEmail(hospitalProfile.email ?? authProfile?.email ?? "");
+      setLatitude(hospitalProfile.latitude ?? null);
+      setLongitude(hospitalProfile.longitude ?? null);
     } else if (authProfile) {
-      // New account — pre-fill just the email from auth
+      setPhone(authProfile.phone_number ?? "");
       setEmail(authProfile.email ?? "");
     }
-    setPrefilled(true);
-  }, [isLoading, hospitalProfile, authProfile, prefilled]);
+  }, [isLoading, hospitalProfile, authProfile]);
 
-  // After a successful save, allow re-fill from the updated profile
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported in this browser.");
+      return;
+    }
+
+    setIsLocating(true);
+    const onSuccess = async (position: GeolocationPosition) => {
+      const lat = Number(position.coords.latitude.toFixed(6));
+      const lng = Number(position.coords.longitude.toFixed(6));
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Reverse geocoding failed");
+        }
+
+        const data = await response.json();
+        const addressData = data?.address || {};
+
+        setAddress(
+          data?.display_name ||
+            [addressData.house_number, addressData.road].filter(Boolean).join(" ")
+        );
+        setCity(addressData.city || addressData.town || addressData.village || city);
+        setStateVal(addressData.state || stateVal);
+        setZipCode(addressData.postcode || "");
+      } catch (_error) {
+        // Keep existing address values if reverse geocoding is unavailable
+      } finally {
+        setLatitude(lat);
+        setLongitude(lng);
+        toast.success("Current location captured.");
+        setIsLocating(false);
+      }
+    };
+
+    const tryIpFallback = async () => {
+      try {
+        const response = await fetch("https://ipapi.co/json/");
+        if (!response.ok) {
+          throw new Error("Failed to fetch location");
+        }
+        const data = await response.json();
+        if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+          setLatitude(Number(data.latitude.toFixed(6)));
+          setLongitude(Number(data.longitude.toFixed(6)));
+          setAddress(data.org || address);
+          setCity(data.city || city);
+          setStateVal(data.region || stateVal);
+          setZipCode(data.postal || zipCode);
+          toast.success("Approximate location captured from network.");
+          setIsLocating(false);
+          return;
+        }
+        throw new Error("Coordinates unavailable");
+      } catch (_error) {
+        toast.error("Location unavailable. Please enter address manually and try again later.");
+        setIsLocating(false);
+      }
+    };
+
+    const onError = (error: GeolocationPositionError) => {
+      if (error.code === error.POSITION_UNAVAILABLE) {
+        // Retry once with relaxed options (network/cell based fallback)
+        navigator.geolocation.getCurrentPosition(
+          onSuccess,
+          async (retryError) => {
+            if (retryError.code === retryError.POSITION_UNAVAILABLE) {
+              await tryIpFallback();
+              return;
+            }
+            toast.error(retryError.message || "Location unavailable. Turn on device location services and try again.");
+            setIsLocating(false);
+          },
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+        );
+        return;
+      }
+
+      if (error.code === error.PERMISSION_DENIED) {
+        toast.error("Location permission denied. Allow location access in browser settings.");
+      } else if (error.code === error.TIMEOUT) {
+        toast.error("Location request timed out. Please try again.");
+      } else {
+        toast.error(error.message || "Unable to get current location.");
+      }
+      setIsLocating(false);
+    };
+
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    });
+  };
+
   const handleSave = () => {
-    setPrefilled(false); // will re-fill from refreshed data after mutation
     updateProfile.mutate({
       hospitalName,
       address,
@@ -60,6 +161,8 @@ export default function HospitalSettings() {
       state: stateVal,
       phoneNumber: phone,
       email,
+      latitude: latitude ?? undefined,
+      longitude: longitude ?? undefined,
     });
   };
 
@@ -166,6 +269,22 @@ export default function HospitalSettings() {
                 <CardTitle>Location</CardTitle>
                 <CardDescription>Your hospital's address details</CardDescription>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleUseCurrentLocation}
+                disabled={isLocating || isLoading}
+              >
+                {isLocating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Locating...
+                  </>
+                ) : (
+                  "Use Current Location"
+                )}
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -206,6 +325,36 @@ export default function HospitalSettings() {
                       placeholder="Maharashtra"
                       value={stateVal}
                       onChange={(e) => setStateVal(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="zipCode">ZIP Code</Label>
+                  <Input
+                    id="zipCode"
+                    placeholder="ZIP / Postal Code"
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="latitude">Latitude</Label>
+                    <Input
+                      id="latitude"
+                      value={latitude ?? ""}
+                      readOnly
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="longitude">Longitude</Label>
+                    <Input
+                      id="longitude"
+                      value={longitude ?? ""}
+                      readOnly
                       className="mt-1"
                     />
                   </div>

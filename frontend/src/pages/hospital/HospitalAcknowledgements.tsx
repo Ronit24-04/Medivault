@@ -38,7 +38,10 @@ import {
   X,
   Loader2,
 } from "lucide-react";
-import { useHospitalSharedRecords } from "@/hooks/useHospital";
+import {
+  useHospitalSharedRecords,
+  useUpdateSharedRecordStatus,
+} from "@/hooks/useHospital";
 import { HospitalSharedRecord } from "@/api/services/hospital-admin.service";
 import { format } from "date-fns";
 
@@ -52,7 +55,6 @@ const formatDate = (dateString?: string) => {
 };
 
 type LocalStatus = "pending" | "acknowledged" | "rejected";
-
 type AckItem = HospitalSharedRecord & { localStatus: LocalStatus };
 
 export default function HospitalAcknowledgements() {
@@ -61,7 +63,7 @@ export default function HospitalAcknowledgements() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const [localStatuses, setLocalStatuses] = useState<Record<number, LocalStatus>>({});
+  const updateSharedRecordStatus = useUpdateSharedRecordStatus();
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     id: number | null;
@@ -71,7 +73,12 @@ export default function HospitalAcknowledgements() {
 
   const items: AckItem[] = (sharedRecords ?? []).map((r) => ({
     ...r,
-    localStatus: localStatuses[r.share_id] ?? "pending",
+    localStatus:
+      r.status === "acknowledged"
+        ? "acknowledged"
+        : r.status === "rejected"
+          ? "rejected"
+          : "pending",
   }));
 
   const filtered = items.filter((item) => {
@@ -96,10 +103,10 @@ export default function HospitalAcknowledgements() {
 
   const confirmAction = () => {
     if (confirmDialog.id !== null && confirmDialog.action) {
-      setLocalStatuses((prev) => ({
-        ...prev,
-        [confirmDialog.id!]: confirmDialog.action!,
-      }));
+      updateSharedRecordStatus.mutate({
+        shareId: confirmDialog.id,
+        status: confirmDialog.action,
+      });
     }
     setConfirmDialog({ open: false, id: null, action: null, patientName: "" });
   };

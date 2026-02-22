@@ -28,8 +28,9 @@ import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
 import { useState, useEffect } from "react";
 import { useProfile, useLogout } from "@/hooks/useAuth";
 import { usePatients } from "@/hooks/usePatients";
-import { useHospitalProfile } from "@/hooks/useHospital";
+import { useHospitalAlerts, useHospitalProfile } from "@/hooks/useHospital";
 import { ProfileSwitcher } from "@/components/profile/ProfileSwitcher";
+import { useProfileStore } from "@/stores/useProfileStore";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -58,19 +59,26 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const logout = useLogout();
+  const lockProfile = useProfileStore((state) => state.lockProfile);
 
   // Back-button auto-logout: push a sentinel state so we can detect back navigation
   useEffect(() => {
     history.pushState({ dashboard: true }, "");
 
     const handlePopState = () => {
+      if (userType === "patient") {
+        lockProfile();
+        navigate("/patient/unlock", { replace: true });
+        return;
+      }
+
       logout();
       navigate("/login", { replace: true });
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [lockProfile, logout, navigate, userType]);
 
   // Fetch user profile data
   const { data: profile } = useProfile();
@@ -81,6 +89,11 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
 
   // For hospital users, fetch the hospital profile name from Settings
   const { data: hospitalProfile } = useHospitalProfile();
+  const { data: hospitalAlerts } = useHospitalAlerts();
+  const pendingAlertCount =
+    userType === "hospital"
+      ? hospitalAlerts?.filter((alert) => alert.status === "sent").length || 0
+      : 0;
 
   const navItems = userType === "patient" ? patientNavItems : hospitalNavItems;
   const userName = userType === "patient"
@@ -104,7 +117,16 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
               }`}
           >
             <Icon className="h-5 w-5" />
-            {item.label}
+            <span className="flex items-center gap-2">
+              {item.label}
+              {userType === "hospital" &&
+                item.href === "/hospital/alerts" &&
+                pendingAlertCount > 0 && (
+                  <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground">
+                    {pendingAlertCount}
+                  </span>
+                )}
+            </span>
           </Link>
         );
       })}
@@ -171,7 +193,13 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
 
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
+              {pendingAlertCount > 0 ? (
+                <span className="absolute -top-1 -right-1 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground">
+                  {pendingAlertCount}
+                </span>
+              ) : (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
+              )}
             </Button>
 
             <DropdownMenu>

@@ -1,5 +1,7 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middleware/error.middleware';
+import { sendSharedAccessEmail } from '../../utils/email.util';
+import { env } from '../../config/env';
 
 interface CreateShareData {
     hospitalId?: number;
@@ -17,6 +19,39 @@ interface UpdateShareData {
 }
 
 export class SharedAccessService {
+    private async getOrCreateHospitalProfile(adminId: number, email: string) {
+        const existing = await prisma.hospital.findFirst({
+            where: { admin_id: adminId },
+            select: {
+                hospital_id: true,
+                hospital_name: true,
+            },
+        });
+
+        if (existing) {
+            return existing;
+        }
+
+        const fallbackName = email.split('@')[0].replace(/[._-]/g, ' ').trim() || 'Hospital';
+
+        return prisma.hospital.create({
+            data: {
+                admin_id: adminId,
+                hospital_name: fallbackName,
+                address: '',
+                city: '',
+                state: '',
+                phone_number: '',
+                email,
+                hospital_type: 'General',
+            },
+            select: {
+                hospital_id: true,
+                hospital_name: true,
+            },
+        });
+    }
+
     async verifyPatientOwnership(adminId: number, patientId: number) {
         const patient = await prisma.patient.findFirst({
             where: {
@@ -63,14 +98,31 @@ export class SharedAccessService {
     async createShare(adminId: number, patientId: number, data: CreateShareData) {
         await this.verifyPatientOwnership(adminId, patientId);
 
-        if (data.hospitalId) {
-            const hospital = await prisma.hospital.findUnique({
-                where: { hospital_id: data.hospitalId },
-            });
-            if (!hospital) {
-                throw new AppError(404, 'Hospital not found');
-            }
+        const isProviderEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.providerName);
+
+        if (!isProviderEmail) {
+            throw new AppError(400, 'Please enter a valid registered hospital email');
         }
+
+        const hospitalAdmin = await prisma.admin.findFirst({
+            where: {
+                email: data.providerName,
+                user_type: 'hospital',
+                account_status: 'active',
+            },
+            select: {
+                admin_id: true,
+            },
+        });
+
+        if (!hospitalAdmin) {
+            throw new AppError(403, 'Access denied. Hospital is not registered on MediVault');
+        }
+
+        const hospitalProfile = await this.getOrCreateHospitalProfile(
+            hospitalAdmin.admin_id,
+            data.providerName
+        );
 
         if (data.contactId) {
             const contact = await prisma.emergencyContact.findFirst({
@@ -87,10 +139,10 @@ export class SharedAccessService {
         const share = await prisma.sharedAccess.create({
             data: {
                 patient_id: patientId,
-                hospital_id: data.hospitalId,
+                hospital_id: hospitalProfile.hospital_id,
                 contact_id: data.contactId,
-                provider_name: data.providerName,
-                provider_type: data.providerType,
+                provider_name: hospitalProfile.hospital_name,
+                provider_type: 'Hospital',
                 access_level: data.accessLevel,
                 expires_on: data.expiresOn ? new Date(data.expiresOn) : null,
                 // Hospital shares start as pending until the hospital accepts
@@ -114,6 +166,23 @@ export class SharedAccessService {
                 },
             },
         });
+
+        const shareUrl = `${env.FRONTEND_URL}/shared/${share.share_id}`;
+
+        try {
+            await sendSharedAccessEmail(data.providerName, {
+                providerName: hospitalProfile.hospital_name,
+                accessLevel: data.accessLevel,
+                expiresOn: data.expiresOn,
+                shareUrl,
+            });
+        } catch (_error) {
+            // Keep share creation successful even if notification email fails.
+            console.error('Failed to send shared access email:', {
+                to: data.providerName,
+                shareId: share.share_id,
+            });
+        }
 
         return share;
     }

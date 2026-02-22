@@ -81,9 +81,19 @@ export default function Register() {
           </p>
 
           <Tabs value={userType} onValueChange={(v) => setUserType(v as "patient" | "hospital")} className="mb-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="patient">Patient</TabsTrigger>
-              <TabsTrigger value="hospital">Hospital</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 rounded-lg bg-muted p-1">
+              <TabsTrigger
+                value="patient"
+                className="rounded-md border-b-2 border-transparent transition-all data-[state=active]:border-green-500 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Patient
+              </TabsTrigger>
+              <TabsTrigger
+                value="hospital"
+                className="rounded-md border-b-2 border-transparent transition-all data-[state=active]:border-green-500 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Hospital
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 

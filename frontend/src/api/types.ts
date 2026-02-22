@@ -9,6 +9,7 @@ export interface ApiResponse<T = any> {
 export interface LoginRequest {
     email: string;
     password: string;
+    userType: 'patient' | 'hospital';
 }
 
 export interface RegisterRequest {
@@ -26,6 +27,7 @@ export interface AuthResponse {
         user_type: string;
         phone_number?: string;
         email_verified: boolean;
+        created_at: string;
     };
     accessToken: string;
     refreshToken: string;
@@ -47,11 +49,13 @@ export interface Patient {
     patient_id: number;
     admin_id: number;
     full_name: string;
+    address?: string;
     date_of_birth?: string;
     gender?: string;
     blood_type?: string;
     height?: number;
     weight?: number;
+    profile_image?: string;
     profile_picture?: string;
     allergies?: string;
     chronic_conditions?: string;
@@ -64,6 +68,7 @@ export interface Patient {
 
 export interface CreatePatientRequest {
     fullName: string;
+    address?: string;
     dateOfBirth?: string;
     gender?: 'male' | 'female' | 'other';
     bloodType?: string;
@@ -74,6 +79,7 @@ export interface CreatePatientRequest {
     currentMedications?: string;
     relationship: string;
     isPrimary?: boolean;
+    emergencyPin?: string;
 }
 
 // Medical Record Types

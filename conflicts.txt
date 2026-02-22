@@ -1,0 +1,6 @@
+﻿backend/src/modules/auth/auth.service.ts
+backend/src/modules/emergency/emergency.service.ts
+backend/src/modules/hospitals/hospital-admin.routes.ts
+frontend/src/api/services/shared-access.service.ts
+frontend/src/pages/hospital/HospitalDocuments.tsx
+frontend/src/pages/patient/SharedAccess.tsx

@@ -60,4 +60,39 @@ export const patientsService = {
             throw new Error(handleApiError(error));
         }
     },
+
+    // Send emergency alert SMS to patient's contacts
+    async sendEmergencyAlert(
+        patientId: number,
+        location?: { latitude?: number; longitude?: number }
+    ): Promise<void> {
+        try {
+            await apiClient.post(`/patients/${patientId}/send-alert`, location || {});
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
+
+    async verifyProfilePin(patientId: number, pin: string): Promise<void> {
+        try {
+            await apiClient.post(`/patients/${patientId}/verify-pin`, { pin });
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
+
+    // Send emergency alert without login using patient account email
+    async sendEmergencyAlertByEmail(
+        email: string,
+        location?: { latitude?: number; longitude?: number }
+    ): Promise<void> {
+        try {
+            await apiClient.post('/patients/public/send-alert', {
+                email,
+                ...(location || {}),
+            });
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
 };
