@@ -81,6 +81,12 @@ export default function HospitalDocuments() {
     toast.info(`Requesting records access for ${doc.patient.full_name}.`);
   };
 
+  const getStatusVariant = (status: string) => {
+    if (status === "rejected") return "destructive" as const;
+    if (status === "active") return "default" as const;
+    return "secondary" as const;
+  };
+
   const isImageFile = (file: SharedRecordFile) =>
     file.file_type?.startsWith("image/") ||
     /\.(png|jpg|jpeg|gif|webp)$/i.test(file.file_path);
@@ -194,7 +200,7 @@ export default function HospitalDocuments() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={doc.status === "active" ? "default" : "secondary"}>
+                          <Badge variant={getStatusVariant(doc.status)}>
                             {doc.status}
                           </Badge>
                         </TableCell>
@@ -261,7 +267,7 @@ export default function HospitalDocuments() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
-                  <Badge variant={viewDoc.status === "active" ? "default" : "secondary"}>
+                  <Badge variant={getStatusVariant(viewDoc.status)}>
                     {viewDoc.status}
                   </Badge>
                 </div>

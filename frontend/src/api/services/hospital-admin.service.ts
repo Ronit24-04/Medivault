@@ -19,6 +19,8 @@ export interface HospitalSharedRecord {
     };
 }
 
+export type SharedRecordDecision = 'acknowledged' | 'rejected';
+
 export interface HospitalAlert {
     alert_id: number;
     patient_id: number;
@@ -53,6 +55,8 @@ export interface UpdateHospitalProfileRequest {
     state?: string;
     phoneNumber?: string;
     email?: string;
+    latitude?: number;
+    longitude?: number;
 }
 
 export const hospitalAdminService = {
@@ -77,6 +81,21 @@ export const hospitalAdminService = {
     async getSharedRecords(): Promise<HospitalSharedRecord[]> {
         try {
             const response = await apiClient.get<ApiResponse<HospitalSharedRecord[]>>('/hospital/shared-records');
+            return response.data.data!;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
+
+    async updateSharedRecordStatus(
+        shareId: number,
+        status: SharedRecordDecision
+    ): Promise<HospitalSharedRecord> {
+        try {
+            const response = await apiClient.post<ApiResponse<HospitalSharedRecord>>(
+                `/hospital/shared-records/${shareId}/status`,
+                { status }
+            );
             return response.data.data!;
         } catch (error) {
             throw new Error(handleApiError(error));

@@ -8,12 +8,43 @@ interface UpdateHospitalProfileData {
     state?: string;
     phoneNumber?: string;
     email?: string;
+    latitude?: number;
+    longitude?: number;
 }
+
+type SharedRecordStatus = 'acknowledged' | 'rejected';
 
 export class HospitalAdminService {
     private async getHospitalByAdminId(adminId: number) {
-        return prisma.hospital.findFirst({
+        const hospitalByAdmin = await prisma.hospital.findFirst({
             where: { admin_id: adminId },
+        });
+
+        if (hospitalByAdmin) {
+            return hospitalByAdmin;
+        }
+
+        // Backward compatibility: link legacy hospital rows created without admin_id
+        const admin = await prisma.admin.findUnique({
+            where: { admin_id: adminId },
+            select: { email: true },
+        });
+
+        if (!admin?.email) {
+            return null;
+        }
+
+        const hospitalByEmail = await prisma.hospital.findFirst({
+            where: { email: admin.email },
+        });
+
+        if (!hospitalByEmail) {
+            return null;
+        }
+
+        return prisma.hospital.update({
+            where: { hospital_id: hospitalByEmail.hospital_id },
+            data: { admin_id: adminId },
         });
     }
 
@@ -34,6 +65,8 @@ export class HospitalAdminService {
                     ...(data.state !== undefined && { state: data.state }),
                     ...(data.phoneNumber !== undefined && { phone_number: data.phoneNumber }),
                     ...(data.email !== undefined && { email: data.email }),
+                    ...(data.latitude !== undefined && { latitude: data.latitude }),
+                    ...(data.longitude !== undefined && { longitude: data.longitude }),
                 },
             });
         }
@@ -47,6 +80,8 @@ export class HospitalAdminService {
                 state: data.state || '',
                 phone_number: data.phoneNumber || '',
                 email: data.email,
+                latitude: data.latitude,
+                longitude: data.longitude,
                 hospital_type: 'General',
             },
         });
@@ -69,6 +104,27 @@ export class HospitalAdminService {
                 },
             },
             orderBy: { shared_on: 'desc' },
+        });
+    }
+
+    async updateSharedRecordStatus(adminId: number, shareId: number, status: SharedRecordStatus) {
+        const hospital = await this.getHospitalByAdminId(adminId);
+        if (!hospital) throw new AppError(404, 'Hospital profile not found');
+
+        const share = await prisma.sharedAccess.findFirst({
+            where: {
+                share_id: shareId,
+                hospital_id: hospital.hospital_id,
+            },
+        });
+
+        if (!share) {
+            throw new AppError(404, 'Shared record not found');
+        }
+
+        return prisma.sharedAccess.update({
+            where: { share_id: shareId },
+            data: { status },
         });
     }
 
@@ -114,7 +170,15 @@ export class HospitalAdminService {
         if (!hospital) return [];
 
         return prisma.emergencyAlert.findMany({
-            where: { hospital_id: hospital.hospital_id },
+            where: {
+                hospital_id: hospital.hospital_id,
+                sent_to_hospital: true,
+                status: { not: 'acknowledge' },
+                NOT: [
+                    { alert_message: { contains: 'record access shared' } },
+                    { alert_message: { contains: 'shared access' } },
+                ],
+            },
             include: {
                 patient: {
                     select: {

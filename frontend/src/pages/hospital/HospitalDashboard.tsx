@@ -70,6 +70,12 @@ export default function HospitalDashboard() {
     status: record.status,
   })) ?? [];
 
+  const getStatusVariant = (status: string) => {
+    if (status === "rejected") return "destructive" as const;
+    if (status === "active") return "default" as const;
+    return "secondary" as const;
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout userType="hospital">
@@ -161,7 +167,7 @@ export default function HospitalDashboard() {
                     <p className="font-medium">{patient.name}</p>
                     <p className="text-sm text-muted-foreground">Shared {patient.lastVisit}</p>
                   </div>
-                  <Badge variant={patient.status === "active" ? "default" : "secondary"}>
+                  <Badge variant={getStatusVariant(patient.status)}>
                     {patient.status}
                   </Badge>
                   <Button

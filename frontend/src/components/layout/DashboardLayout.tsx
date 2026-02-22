@@ -30,6 +30,7 @@ import { useProfile, useLogout } from "@/hooks/useAuth";
 import { usePatients } from "@/hooks/usePatients";
 import { useHospitalAlerts, useHospitalProfile } from "@/hooks/useHospital";
 import { ProfileSwitcher } from "@/components/profile/ProfileSwitcher";
+import { useProfileStore } from "@/stores/useProfileStore";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -58,19 +59,26 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const logout = useLogout();
+  const lockProfile = useProfileStore((state) => state.lockProfile);
 
   // Back-button auto-logout: push a sentinel state so we can detect back navigation
   useEffect(() => {
     history.pushState({ dashboard: true }, "");
 
     const handlePopState = () => {
+      if (userType === "patient") {
+        lockProfile();
+        navigate("/patient/unlock", { replace: true });
+        return;
+      }
+
       logout();
       navigate("/login", { replace: true });
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [lockProfile, logout, navigate, userType]);
 
   // Fetch user profile data
   const { data: profile } = useProfile();

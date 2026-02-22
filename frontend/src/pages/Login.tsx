@@ -17,11 +17,10 @@ export default function Login() {
   const [userType, setUserType] = useState<"patient" | "hospital">("patient");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showEmergency, setShowEmergency] = useState(false);
-  const [isSendingAlert, setIsSendingAlert] = useState(false);
 
   const loginMutation = useLogin();
-  const currentProfile = useProfileStore((state) => state.currentProfile);
+  const setProfiles = useProfileStore((state) => state.setProfiles);
+  const unlockProfile = useProfileStore((state) => state.unlockProfile);
    
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,61 +30,36 @@ export default function Login() {
       const result = await loginMutation.mutateAsync({
         email,
         password,
+        userType,
       });
+      unlockProfile();
       console.log("LOGIN RESULT 👉", result);
 
       // Navigate based on user type from the response
-      const userType = result.admin.user_type.toUpperCase();
+      const loggedInUserType = result.admin.user_type.toUpperCase();
 
-      if (userType === "PATIENT") {
+      if (loggedInUserType === "PATIENT") {
+        try {
+          const profiles = await patientsService.getPatients();
+          setProfiles(profiles);
+        } catch (_error) {
+          // Dashboard can still load profiles on mount; don't block login navigation.
+        }
         navigate("/patient/dashboard");
-      } else if (userType === "HOSPITAL") {
+      } else if (loggedInUserType === "HOSPITAL") {
         navigate("/hospital/dashboard");
       } else {
         // Default fallback
         navigate("/patient/dashboard");
       }
     } catch (error) {
-      // Error is already handled by the mutation's onError
-    }
-  };
-
-  const handleSendEmergencyAlert = async () => {
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
-      toast.error("Please sign in before sending an emergency alert.");
-      return;
-    }
-
-    if (!currentProfile?.patient_id) {
-      toast.error("No patient profile selected. Please sign in first.");
-      return;
-    }
-
-    try {
-      setIsSendingAlert(true);
-      await patientsService.sendEmergencyAlert(currentProfile.patient_id);
-      toast.success("Emergency alert sent successfully");
-      setShowEmergency(false);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to send emergency alert"
-      );
-    } finally {
-      setIsSendingAlert(false);
+      toast.error(error instanceof Error ? error.message : "Login failed");
     }
   };
 
   return (
     <div className="min-h-screen flex">
       <div className="flex-1 relative flex items-center justify-center p-6 md:p-12">
-          {/* 🚨 Emergency Floating Button */}
-<button
-  onClick={() => setShowEmergency(true)}
-  className="absolute top-6 right-6 z-50 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition"
->
-  🚨 Emergency
-</button>
         <div className="w-full max-w-md animate-fade-in">
           {/* Logo of the app */}
           <Link to="/" className="flex items-center gap-2.5 mb-8">
@@ -101,9 +75,19 @@ export default function Login() {
           </p>
 
           <Tabs value={userType} onValueChange={(v) => setUserType(v as "patient" | "hospital")} className="mb-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="patient">Patient</TabsTrigger>
-              <TabsTrigger value="hospital">Hospital</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 rounded-lg bg-muted p-1">
+              <TabsTrigger
+                value="patient"
+                className="rounded-md border-b-2 border-transparent transition-all data-[state=active]:border-green-500 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Patient
+              </TabsTrigger>
+              <TabsTrigger
+                value="hospital"
+                className="rounded-md border-b-2 border-transparent transition-all data-[state=active]:border-green-500 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Hospital
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -201,47 +185,6 @@ export default function Login() {
           </p>
         </div>
       </div>
-      {/* Emergency Modal */}
-{showEmergency && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div className="bg-white p-6 rounded-xl w-[400px] shadow-xl">
-      <h2 className="text-xl font-semibold mb-4 text-red-600">
-        Emergency Information
-      </h2>
-
-      <p><b>Name:</b> {currentProfile?.full_name || "No profile"}</p>
-<p><b>Blood Group:</b> {currentProfile?.blood_group}</p>
-
-<p className="text-red-500 font-medium">
-  Allergy: {currentProfile?.allergies}
-</p>
-
-<p>
-  Conditions: {currentProfile?.existing_conditions}
-</p>
-     
-
-      <div className="mt-5 flex gap-3">
-  {/* 🚨 Send Alert Button */}
-  <button
-    onClick={handleSendEmergencyAlert}
-    disabled={isSendingAlert}
-    className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
-  >
-    {isSendingAlert ? "Sending..." : "Send Alert"}
-  </button>
-
-  {/* Close Button */}
-  <button
-    onClick={() => setShowEmergency(false)}
-    className="flex-1 bg-gray-900 text-white py-2 rounded-lg"
-  >
-    Close
-  </button>
-</div>
-    </div>
-  </div>
-)}
     </div>
   );
 }

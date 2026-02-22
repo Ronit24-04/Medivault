@@ -54,6 +54,27 @@ export class HospitalAdminController {
         }
     }
 
+    async updateSharedRecordStatus(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const adminId = req.admin!.adminId;
+            const shareId = parseInt(req.params.shareId as string, 10);
+            const { status } = req.body;
+
+            if (status !== 'acknowledged' && status !== 'rejected') {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid status. Use acknowledged or rejected',
+                });
+                return;
+            }
+
+            const updated = await hospitalAdminService.updateSharedRecordStatus(adminId, shareId, status);
+            res.json({ success: true, data: updated });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async acknowledgeAlert(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const adminId = req.admin!.adminId;

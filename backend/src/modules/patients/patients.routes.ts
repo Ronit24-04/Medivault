@@ -7,6 +7,7 @@ import {
     createPatientSchema,
     updatePatientSchema,
     patientIdSchema,
+    verifyPatientPinSchema,
 } from './patients.validation';
 
 const router = Router();
@@ -27,5 +28,6 @@ router.put(
 );
 router.delete('/:patientId', validate(patientIdSchema), patientsController.deletePatient.bind(patientsController));
 router.get('/:patientId/emergency-info', validate(patientIdSchema), patientsController.getEmergencyInfo.bind(patientsController));
+router.post('/:patientId/verify-pin', validate(verifyPatientPinSchema), patientsController.verifyProfilePin.bind(patientsController));
 
 export default router;

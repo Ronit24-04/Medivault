@@ -14,6 +14,7 @@ interface CreatePatientData {
     currentMedications?: string;
     relationship: string;
     isPrimary?: boolean;
+    emergencyPin?: string;
 }
 
 export class PatientsService {
@@ -103,6 +104,9 @@ export class PatientsService {
             });
         }
 
+        const emergencyPinValue =
+            data.emergencyPin !== undefined ? data.emergencyPin : undefined;
+
         const patient = await prisma.patient.update({
             where: { patient_id: patientId },
             data: {
@@ -115,6 +119,7 @@ export class PatientsService {
                 weight_kg: data.weight,
                 relationship: data.relationship,
                 is_primary: data.isPrimary,
+                emergency_pin: emergencyPinValue,
             },
         });
 
@@ -182,6 +187,33 @@ export class PatientsService {
         }
 
         return patient;
+    }
+
+    async verifyProfilePin(adminId: number, patientId: number, pin: string) {
+        const patient = await prisma.patient.findFirst({
+            where: {
+                patient_id: patientId,
+                admin_id: adminId,
+            },
+            select: {
+                emergency_pin: true,
+            },
+        });
+
+        if (!patient) {
+            throw new AppError(404, 'Patient not found');
+        }
+
+        if (!patient.emergency_pin) {
+            throw new AppError(400, 'No PIN has been set for this profile');
+        }
+
+        const isValidPin = pin === patient.emergency_pin;
+        if (!isValidPin) {
+            throw new AppError(401, 'Invalid PIN');
+        }
+
+        return { message: 'PIN verified' };
     }
 }
 

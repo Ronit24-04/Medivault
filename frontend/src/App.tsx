@@ -14,6 +14,7 @@ import UploadRecord from "./pages/patient/UploadRecord";
 import SharedAccess from "./pages/patient/SharedAccess";
 import PatientProfile from "./pages/patient/PatientProfile";
 import PatientSettings from "./pages/patient/PatientSettings";
+import PatientUnlock from "./pages/patient/PatientUnlock";
 import HospitalDashboard from "./pages/hospital/HospitalDashboard";
 import HospitalDocuments from "./pages/hospital/HospitalDocuments";
 import HospitalAcknowledgements from "./pages/hospital/HospitalAcknowledgements";
@@ -43,12 +44,14 @@ const App = () => (
           <Route path="/patient/shared" element={<SharedAccess />} />
           <Route path="/patient/profile" element={<PatientProfile />} />
           <Route path="/patient/settings" element={<PatientSettings />} />
+          <Route path="/patient/unlock" element={<PatientUnlock />} />
 
           {/* Hospital Routes */}
           <Route path="/hospital/dashboard" element={<HospitalDashboard />} />
           <Route path="/hospital/documents" element={<HospitalDocuments />} />
           <Route path="/hospital/acknowledgements" element={<HospitalAcknowledgements />} />
           <Route path="/hospital/alerts" element={<HospitalAlerts />} />
+          <Route path="/hospital/profile" element={<HospitalSettings />} />
           <Route path="/hospital/settings" element={<HospitalSettings />} />
           <Route path="/hospital/register" element={<Register />} />
 

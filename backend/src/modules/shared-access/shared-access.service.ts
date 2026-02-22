@@ -182,17 +182,6 @@ export class SharedAccessService {
             });
         }
 
-        await prisma.emergencyAlert.create({
-            data: {
-                patient_id: patientId,
-                hospital_id: hospitalProfile.hospital_id,
-                alert_message: `New record access shared. Level: ${data.accessLevel}.`,
-                status: 'sent',
-                sent_to_hospital: true,
-                sent_at: new Date(),
-            },
-        });
-
         return share;
     }
 

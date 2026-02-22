@@ -34,11 +34,26 @@ export const updatePatientSchema = z.object({
         currentMedications: z.string().optional(),
         relationship: z.string().optional(),
         isPrimary: z.boolean().optional(),
+        emergencyPin: z
+            .string()
+            .regex(/^\d{4}$/, 'Emergency PIN must be exactly 4 digits')
+            .optional(),
     }),
 });
 
 export const patientIdSchema = z.object({
     params: z.object({
         patientId: z.string().regex(/^\d+$/, 'Invalid patient ID'),
+    }),
+});
+
+export const verifyPatientPinSchema = z.object({
+    params: z.object({
+        patientId: z.string().regex(/^\d+$/, 'Invalid patient ID'),
+    }),
+    body: z.object({
+        pin: z
+            .string()
+            .regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
     }),
 });

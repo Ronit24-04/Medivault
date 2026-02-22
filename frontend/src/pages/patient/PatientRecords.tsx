@@ -26,7 +26,6 @@ import {
   Plus,
   FileText,
   Download,
-  Share2,
   Eye,
   TestTube,
   Activity,
@@ -38,6 +37,7 @@ import {
   Clock,
   Loader2,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,7 +51,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useRecords } from "@/hooks/useRecords";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useDeleteRecord, useRecords } from "@/hooks/useRecords";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { format } from "date-fns";
 import { MedicalRecord } from "@/api/types";
@@ -104,6 +114,7 @@ export default function PatientRecords() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [viewingRecord, setViewingRecord] = useState<MedicalRecord | null>(null);
+  const [recordToDelete, setRecordToDelete] = useState<MedicalRecord | null>(null);
 
   const handleDownload = (record: MedicalRecord) => {
     const a = document.createElement("a");
@@ -118,9 +129,29 @@ export default function PatientRecords() {
 
   const currentProfile = useProfileStore((s) => s.currentProfile);
   const patientId = currentProfile?.patient_id;
+  const deleteRecordMutation = useDeleteRecord();
 
   // Fetch medical records
   const { data: records, isLoading, error } = useRecords(patientId || 0);
+
+  const handleDeleteRecordClick = (record: MedicalRecord) => {
+    setRecordToDelete(record);
+  };
+
+  const confirmDeleteRecord = async () => {
+    if (!patientId || !recordToDelete) return;
+
+    await deleteRecordMutation.mutateAsync({
+      patientId,
+      recordId: recordToDelete.record_id,
+    });
+
+    if (viewingRecord?.record_id === recordToDelete.record_id) {
+      setViewingRecord(null);
+    }
+
+    setRecordToDelete(null);
+  };
 
   // Filter records based on search and category
   const filteredRecords = records?.filter((record) => {
@@ -332,6 +363,14 @@ export default function PatientRecords() {
                                   <Download className="mr-2 h-4 w-4" />
                                   Download
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteRecordClick(record)}
+                                  className="text-destructive focus:text-destructive"
+                                  disabled={deleteRecordMutation.isPending}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Record
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -433,6 +472,36 @@ export default function PatientRecords() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!recordToDelete}
+        onOpenChange={(open) => {
+          if (!open) setRecordToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-sm backdrop-blur-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm</AlertDialogTitle>
+            <AlertDialogDescription>
+              {recordToDelete
+                ? `Delete "${recordToDelete.title}"? This action cannot be undone.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRecordMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteRecord}
+              disabled={deleteRecordMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteRecordMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

@@ -9,6 +9,7 @@ export interface ApiResponse<T = any> {
 export interface LoginRequest {
     email: string;
     password: string;
+    userType: 'patient' | 'hospital';
 }
 
 export interface RegisterRequest {
@@ -78,6 +79,7 @@ export interface CreatePatientRequest {
     currentMedications?: string;
     relationship: string;
     isPrimary?: boolean;
+    emergencyPin?: string;
 }
 
 // Medical Record Types

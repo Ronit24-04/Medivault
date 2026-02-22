@@ -37,7 +37,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Rate limiting
-app.use('/api', apiLimiter);
+// Auth routes have their own limiter, so skip the global limiter for /api/auth/*
+app.use('/api', (req, res, next) => {
+    if (req.path.startsWith('/auth/')) {
+        next();
+        return;
+    }
+    if (req.headers.authorization?.startsWith('Bearer ')) {
+        next();
+        return;
+    }
+    apiLimiter(req, res, next);
+});
 
 // API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

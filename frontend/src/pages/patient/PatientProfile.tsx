@@ -39,11 +39,20 @@ type AddressParts = {
   city: string;
   state: string;
   zipCode: string;
+  latitude: string;
+  longitude: string;
 };
 
 const parseAddress = (rawAddress?: string): AddressParts => {
   if (!rawAddress) {
-    return { streetAddress: "", city: "", state: "", zipCode: "" };
+    return {
+      streetAddress: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      latitude: "",
+      longitude: "",
+    };
   }
 
   try {
@@ -53,9 +62,24 @@ const parseAddress = (rawAddress?: string): AddressParts => {
       city: parsed.city || "",
       state: parsed.state || "",
       zipCode: parsed.zipCode || "",
+      latitude:
+        parsed.latitude !== undefined && parsed.latitude !== null
+          ? String(parsed.latitude)
+          : "",
+      longitude:
+        parsed.longitude !== undefined && parsed.longitude !== null
+          ? String(parsed.longitude)
+          : "",
     };
   } catch (_error) {
-    return { streetAddress: rawAddress, city: "", state: "", zipCode: "" };
+    return {
+      streetAddress: rawAddress,
+      city: "",
+      state: "",
+      zipCode: "",
+      latitude: "",
+      longitude: "",
+    };
   }
 };
 
@@ -77,6 +101,10 @@ const [streetAddress, setStreetAddress] = useState("");
 const [city, setCity] = useState("");
 const [state, setState] = useState("");
 const [zipCode, setZipCode] = useState("");
+const [latitude, setLatitude] = useState("");
+const [longitude, setLongitude] = useState("");
+const [isLocatingAddress, setIsLocatingAddress] = useState(false);
+const [profilePin, setProfilePin] = useState("");
 const [emergencyContactsForm, setEmergencyContactsForm] = useState<EmergencyContactForm[]>(
   Array.from({ length: MAX_EMERGENCY_CONTACTS }, () => ({
     name: "",
@@ -128,6 +156,8 @@ setWeight(currentProfile.weight || "");
     setCity(parsedAddress.city);
     setState(parsedAddress.state);
     setZipCode(parsedAddress.zipCode);
+    setLatitude(parsedAddress.latitude);
+    setLongitude(parsedAddress.longitude);
   }
   // fallback → backend user
   else if (user) {
@@ -178,13 +208,20 @@ setWeight(currentProfile.weight || "");
           city: city.trim(),
           state: state.trim(),
           zipCode: zipCode.trim(),
+          latitude: latitude ? Number(latitude) : undefined,
+          longitude: longitude ? Number(longitude) : undefined,
         }),
         ...(dateOfBirth && { dateOfBirth }),
         ...(gender && { gender }),
         ...(bloodGroup && { bloodType: bloodGroup }),
         ...(height && { height: Number(height) }),
         ...(weight && { weight: Number(weight) }),
+        ...(profilePin ? { emergencyPin: profilePin } : {}),
       };
+
+      if (profilePin && !/^\d{4}$/.test(profilePin)) {
+        throw new Error("Profile PIN must be exactly 4 digits.");
+      }
 
       const updated = await patientsService.updatePatient(
         currentProfile.patient_id,
@@ -243,6 +280,8 @@ setWeight(currentProfile.weight || "");
           city: city.trim(),
           state: state.trim(),
           zipCode: zipCode.trim(),
+          latitude: latitude ? Number(latitude) : undefined,
+          longitude: longitude ? Number(longitude) : undefined,
         }),
         date_of_birth: dateOfBirth,
         gender,
@@ -254,6 +293,7 @@ setWeight(currentProfile.weight || "");
       } as any);
 
       toast.success("Profile updated successfully");
+      setProfilePin("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save profile");
     } finally {
@@ -316,6 +356,84 @@ setWeight(currentProfile.weight || "");
     }
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported in this browser.");
+      return;
+    }
+
+    const applyAddressFromCoords = async (lat: number, lng: number) => {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
+        );
+        if (!response.ok) {
+          throw new Error("Reverse geocoding failed");
+        }
+        const data = await response.json();
+        const addressData = data?.address || {};
+        const normalizedLat = Number(lat.toFixed(6));
+        const normalizedLng = Number(lng.toFixed(6));
+
+        setStreetAddress(
+          data?.display_name ||
+            [addressData.house_number, addressData.road].filter(Boolean).join(" ")
+        );
+        setCity(addressData.city || addressData.town || addressData.village || "");
+        setState(addressData.state || "");
+        setZipCode(addressData.postcode || "");
+        setLatitude(String(normalizedLat));
+        setLongitude(String(normalizedLng));
+        toast.success("Current location added to address.");
+      } catch (_error) {
+        setStreetAddress(`Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`);
+        setLatitude(String(Number(lat.toFixed(6))));
+        setLongitude(String(Number(lng.toFixed(6))));
+        toast.success("Coordinates captured. Please complete city/state/zip manually.");
+      } finally {
+        setIsLocatingAddress(false);
+      }
+    };
+
+    const tryIpFallback = async () => {
+      try {
+        const response = await fetch("https://ipapi.co/json/");
+        if (!response.ok) {
+          throw new Error("IP lookup failed");
+        }
+        const data = await response.json();
+        if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+          const lat = Number(data.latitude.toFixed(6));
+          const lng = Number(data.longitude.toFixed(6));
+          setStreetAddress(data.org || "Approximate location");
+          setCity(data.city || "");
+          setState(data.region || "");
+          setZipCode(data.postal || "");
+          setLatitude(String(lat));
+          setLongitude(String(lng));
+          toast.success("Approximate address added from network.");
+        } else {
+          throw new Error("No coordinates");
+        }
+      } catch (_error) {
+        toast.error("Location unavailable. Please enter address manually.");
+      } finally {
+        setIsLocatingAddress(false);
+      }
+    };
+
+    setIsLocatingAddress(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        await applyAddressFromCoords(position.coords.latitude, position.coords.longitude);
+      },
+      async () => {
+        await tryIpFallback();
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
+
   return (
     <DashboardLayout userType="patient">
       <div className="space-y-6 max-w-4xl">
@@ -363,7 +481,7 @@ setWeight(currentProfile.weight || "");
               </div>
               <div className="text-center sm:text-left">
                 <h2 className="text-xl font-semibold">
-  {user?.email}
+  {currentProfile?.full_name || `${firstName} ${lastName}`.trim() || "Patient"}
 </h2>
                 <p className="text-muted-foreground">
   {user?.email}
@@ -511,13 +629,48 @@ setWeight(currentProfile.weight || "");
           </CardContent>
         </Card>
 
-        {/* Patient address */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Address
+              <Phone className="h-5 w-5" />
+              Profile PIN Protection
             </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Label htmlFor="profilePin">4-digit PIN</Label>
+            <Input
+              id="profilePin"
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="Enter 4-digit PIN"
+              value={profilePin}
+              onChange={(e) => setProfilePin(e.target.value.replace(/\D/g, ""))}
+            />
+            <p className="text-xs text-muted-foreground">
+              This PIN will lock/unlock your patient profile when returning to the app.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Patient address */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Address
+              </CardTitle>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleUseCurrentLocation}
+                disabled={isLocatingAddress}
+              >
+                {isLocatingAddress ? "Locating..." : "Use Current Location"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -555,6 +708,26 @@ setWeight(currentProfile.weight || "");
                   value={zipCode}
                   onChange={(e) => setZipCode(e.target.value)}
                   placeholder="ZIP Code"
+                />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="latitude">Latitude</Label>
+                <Input
+                  id="latitude"
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                  placeholder="Latitude"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="longitude">Longitude</Label>
+                <Input
+                  id="longitude"
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                  placeholder="Longitude"
                 />
               </div>
             </div>

@@ -7,7 +7,8 @@ const transporter = nodemailer.createTransport({
     secure: env.EMAIL_SECURE,
     auth: {
         user: env.EMAIL_USER,
-        pass: env.EMAIL_PASSWORD,
+        // Gmail app passwords are often copied with spaces; normalize before use.
+        pass: env.EMAIL_PASSWORD.replace(/\s+/g, ''),
     },
 });
 

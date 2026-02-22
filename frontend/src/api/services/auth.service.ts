@@ -22,7 +22,10 @@ export const authService = {
     async login(data: LoginRequest): Promise<AuthResponse> {
         try {
             const response = await apiClient.post<ApiResponse<AuthResponse>>('/auth/login', data);
-            const authData = response.data.data!;
+            const authData = response.data.data;
+            if (!authData?.admin || !authData?.accessToken || !authData?.refreshToken) {
+                throw new Error(response.data.message || 'Invalid login response from server');
+            }
 
             // Store tokens and user data
             localStorage.setItem('accessToken', authData.accessToken);

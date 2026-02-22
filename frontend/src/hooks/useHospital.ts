@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     hospitalAdminService,
+    SharedRecordDecision,
     SharedRecordFile,
     UpdateHospitalProfileRequest,
 } from '../api/services/hospital-admin.service';
@@ -50,6 +51,26 @@ export const useSharedRecordFiles = (shareId: number | null) => {
         queryFn: () => hospitalAdminService.getSharedRecordFiles(shareId!),
         enabled: !!shareId,
         staleTime: 30 * 1000,
+    });
+};
+
+export const useUpdateSharedRecordStatus = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            shareId,
+            status,
+        }: {
+            shareId: number;
+            status: SharedRecordDecision;
+        }) => hospitalAdminService.updateSharedRecordStatus(shareId, status),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['hospital-shared-records'] });
+            toast.success('Status updated successfully!');
+        },
+        onError: (error: Error) => {
+            toast.error(error.message || 'Failed to update status');
+        },
     });
 };
 

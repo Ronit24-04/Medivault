@@ -6,6 +6,7 @@ import { patientsService } from '@/api/services';
 interface ProfileState {
     profiles: Patient[];
     currentProfile: Patient | null;
+    isLocked: boolean;
     isLoading: boolean;
     error: string | null;
 
@@ -15,6 +16,8 @@ interface ProfileState {
     addProfile: (profile: Patient) => void;
     removeProfile: (patientId: number) => void;
     loadProfiles: () => Promise<void>;
+    lockProfile: () => void;
+    unlockProfile: () => void;
     clearProfiles: () => void;
 }
 
@@ -23,6 +26,7 @@ export const useProfileStore = create<ProfileState>()(
         (set, get) => ({
             profiles: [],
             currentProfile: null,
+            isLocked: false,
             isLoading: false,
             error: null,
 
@@ -107,10 +111,19 @@ if (refreshed) {
                 }
             },
 
+            lockProfile: () => {
+                set({ isLocked: true });
+            },
+
+            unlockProfile: () => {
+                set({ isLocked: false });
+            },
+
             clearProfiles: () => {
                 set({
                     profiles: [],
                     currentProfile: null,
+                    isLocked: false,
                     error: null,
                 });
             },
@@ -119,6 +132,7 @@ if (refreshed) {
             name: 'profile-storage',
             partialize: (state) => ({
                 currentProfile: state.currentProfile || null,
+                isLocked: state.isLocked,
             }),
         }
     )

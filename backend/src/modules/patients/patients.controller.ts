@@ -106,6 +106,20 @@ export class PatientsController {
             next(error);
         }
     }
+
+    async verifyProfilePin(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const patientId = parseInt(req.params.patientId);
+            const pin = String(req.body?.pin || '');
+            const result = await patientsService.verifyProfilePin(req.admin!.adminId, patientId, pin);
+            res.status(200).json({
+                success: true,
+                message: result.message,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export const patientsController = new PatientsController();
