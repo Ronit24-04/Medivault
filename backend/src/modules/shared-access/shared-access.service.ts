@@ -97,32 +97,57 @@ export class SharedAccessService {
 
     async createShare(adminId: number, patientId: number, data: CreateShareData) {
         await this.verifyPatientOwnership(adminId, patientId);
+        let hospitalProfile: { hospital_id: number; hospital_name: string } | null = null;
+        let recipientEmail: string | null = null;
 
-        const isProviderEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.providerName);
+        if (data.hospitalId) {
+            const hospital = await prisma.hospital.findUnique({
+                where: { hospital_id: data.hospitalId },
+                select: {
+                    hospital_id: true,
+                    hospital_name: true,
+                    email: true,
+                    admin_id: true,
+                },
+            });
 
-        if (!isProviderEmail) {
-            throw new AppError(400, 'Please enter a valid registered hospital email');
+            if (!hospital) {
+                throw new AppError(404, 'Hospital not found');
+            }
+
+            hospitalProfile = {
+                hospital_id: hospital.hospital_id,
+                hospital_name: hospital.hospital_name,
+            };
+            recipientEmail = hospital.email ?? null;
+        } else {
+            const isProviderEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.providerName);
+            if (!isProviderEmail) {
+                throw new AppError(400, 'Please select a hospital from the list');
+            }
+
+            const hospitalAdmin = await prisma.admin.findFirst({
+                where: {
+                    email: data.providerName,
+                    user_type: 'hospital',
+                    account_status: 'active',
+                },
+                select: {
+                    admin_id: true,
+                    email: true,
+                },
+            });
+
+            if (!hospitalAdmin) {
+                throw new AppError(403, 'Access denied. Hospital is not registered on MediVault');
+            }
+
+            hospitalProfile = await this.getOrCreateHospitalProfile(
+                hospitalAdmin.admin_id,
+                data.providerName
+            );
+            recipientEmail = hospitalAdmin.email;
         }
-
-        const hospitalAdmin = await prisma.admin.findFirst({
-            where: {
-                email: data.providerName,
-                user_type: 'hospital',
-                account_status: 'active',
-            },
-            select: {
-                admin_id: true,
-            },
-        });
-
-        if (!hospitalAdmin) {
-            throw new AppError(403, 'Access denied. Hospital is not registered on MediVault');
-        }
-
-        const hospitalProfile = await this.getOrCreateHospitalProfile(
-            hospitalAdmin.admin_id,
-            data.providerName
-        );
 
         if (data.contactId) {
             const contact = await prisma.emergencyContact.findFirst({
@@ -169,19 +194,21 @@ export class SharedAccessService {
 
         const shareUrl = `${env.FRONTEND_URL}/shared/${share.share_id}`;
 
-        try {
-            await sendSharedAccessEmail(data.providerName, {
-                providerName: hospitalProfile.hospital_name,
-                accessLevel: data.accessLevel,
-                expiresOn: data.expiresOn,
-                shareUrl,
-            });
-        } catch (_error) {
-            // Keep share creation successful even if notification email fails.
-            console.error('Failed to send shared access email:', {
-                to: data.providerName,
-                shareId: share.share_id,
-            });
+        if (recipientEmail) {
+            try {
+                await sendSharedAccessEmail(recipientEmail, {
+                    providerName: hospitalProfile.hospital_name,
+                    accessLevel: data.accessLevel,
+                    expiresOn: data.expiresOn,
+                    shareUrl,
+                });
+            } catch (_error) {
+                // Keep share creation successful even if notification email fails.
+                console.error('Failed to send shared access email:', {
+                    to: recipientEmail,
+                    shareId: share.share_id,
+                });
+            }
         }
 
         return share;

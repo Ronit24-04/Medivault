@@ -6,7 +6,10 @@ import { emergencyAlertsService } from './emergency-alerts.service';
 export class EmergencyAlertsController {
     async sendAlert(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId, 10);
+            const patientId = parseInt(
+                Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId,
+                10
+            );
             const latitude =
                 req.body?.latitude !== undefined ? Number(req.body.latitude) : undefined;
             const longitude =

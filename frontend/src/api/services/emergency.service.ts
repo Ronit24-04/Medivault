@@ -8,6 +8,19 @@ import {
 } from '../types';
 
 export const emergencyService = {
+    normalizeContact(raw: any): EmergencyContact {
+        return {
+            ...raw,
+            name: raw?.name ?? raw?.contact_name ?? '',
+            phone_number: raw?.phone_number ?? raw?.phoneNumber ?? '',
+            relationship: raw?.relationship ?? '',
+            patient_id: raw?.patient_id ?? raw?.patientId ?? 0,
+            contact_id: raw?.contact_id ?? raw?.contactId ?? 0,
+            is_active: raw?.is_active ?? true,
+            priority: raw?.priority ?? 1,
+        } as EmergencyContact;
+    },
+
     // Emergency Contacts
     async createContact(data: CreateContactRequest): Promise<EmergencyContact> {
         try {
@@ -15,7 +28,7 @@ export const emergencyService = {
                 '/emergency/contacts',
                 data
             );
-            return response.data.data!;
+            return this.normalizeContact(response.data.data);
         } catch (error) {
             throw new Error(handleApiError(error));
         }
@@ -24,7 +37,7 @@ export const emergencyService = {
     async getContacts(): Promise<EmergencyContact[]> {
         try {
             const response = await apiClient.get<ApiResponse<EmergencyContact[]>>('/emergency/contacts');
-            return response.data.data!;
+            return (response.data.data || []).map((contact) => this.normalizeContact(contact));
         } catch (error) {
             throw new Error(handleApiError(error));
         }
@@ -39,7 +52,7 @@ export const emergencyService = {
                 `/emergency/contacts/${contactId}`,
                 data
             );
-            return response.data.data!;
+            return this.normalizeContact(response.data.data);
         } catch (error) {
             throw new Error(handleApiError(error));
         }
