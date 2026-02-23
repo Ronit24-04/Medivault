@@ -353,7 +353,7 @@ export default function PatientRecords() {
                               size="icon-sm"
                               className="hidden sm:inline-flex text-destructive hover:text-destructive hover:bg-destructive/10"
                               title="Delete record"
-                              onClick={() => setDeletingRecord(record)}
+                              onClick={() => handleDeleteRecordClick(record)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
