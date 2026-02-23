@@ -87,7 +87,7 @@ export class AuthService {
                     state: '',
                     phone_number: data.phoneNumber || '',
                     email: data.email,
-                    hospital_type: 'General',
+                    hospital_type: 'private',
                 },
             });
         }

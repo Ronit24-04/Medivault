@@ -48,7 +48,7 @@ export class HospitalsService {
                             state: '',
                             phone_number: hospitalAdmin.phone_number || '',
                             email: hospitalAdmin.email,
-                            hospital_type: 'General',
+                            hospital_type: 'private',
                         },
                     });
                 }
