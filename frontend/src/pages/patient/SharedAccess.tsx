@@ -58,6 +58,8 @@ import { MoreVertical } from "lucide-react";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { showSuccess } from "@/lib/toast";
 import { usePatientId } from "@/hooks/usePatientId";
+import { useRecords } from "@/hooks/useRecords";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useSharedAccess,
   useSharedAccessStats,
@@ -100,6 +102,7 @@ const ACCESS_LEVEL_OPTIONS = [
   { value: "Lab Reports Only", label: "Lab Reports Only" },
   { value: "Prescriptions Only", label: "Prescriptions Only" },
   { value: "Imaging Records Only", label: "Imaging Records Only" },
+  { value: "Specific Records Only", label: "Specific Records Only" },
 ];
 
 const DURATION_OPTIONS = [
@@ -119,6 +122,8 @@ function ShareDialog({ patientId }: { patientId: number }) {
   const [isSearching, setIsSearching] = useState(false);
   const [accessLevel, setAccessLevel] = useState("");
   const [duration, setDuration] = useState("");
+  const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
+  const { data: records, isLoading: recordsLoading } = useRecords(patientId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -177,6 +182,12 @@ function ShareDialog({ patientId }: { patientId: number }) {
 
   const handleSubmit = () => {
     if (!selectedHospital || !accessLevel || !duration) return;
+
+    const sharedRecordIds =
+      accessLevel === "Specific Records Only"
+        ? JSON.stringify(selectedRecordIds)
+        : undefined;
+
     createShare(
       {
         patientId,
@@ -186,6 +197,7 @@ function ShareDialog({ patientId }: { patientId: number }) {
           providerType: "Hospital",
           accessLevel,
           expiresOn: computeExpiresOn(),
+          sharedRecordIds,
         },
       },
       {
@@ -195,6 +207,7 @@ function ShareDialog({ patientId }: { patientId: number }) {
           setSelectedHospital(null);
           setAccessLevel("");
           setDuration("");
+          setSelectedRecordIds([]);
         },
       }
     );
@@ -281,7 +294,10 @@ function ShareDialog({ patientId }: { patientId: number }) {
           {/* Access level */}
           <div className="space-y-2">
             <Label>Access Level</Label>
-            <Select value={accessLevel} onValueChange={setAccessLevel}>
+            <Select value={accessLevel} onValueChange={(val) => {
+              setAccessLevel(val);
+              if (val !== "Specific Records Only") setSelectedRecordIds([]);
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select access level" />
               </SelectTrigger>
@@ -292,6 +308,42 @@ function ShareDialog({ patientId }: { patientId: number }) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Specific Record Selection */}
+          {accessLevel === "Specific Records Only" && (
+            <div className="space-y-2">
+              <Label>Select Records ({selectedRecordIds.length} selected)</Label>
+              <div className="border rounded-md max-h-[180px] overflow-y-auto p-2 space-y-1">
+                {recordsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : records && records.length > 0 ? (
+                  records.map((record) => (
+                    <div key={record.record_id} className="flex items-center space-x-2 p-1 hover:bg-accent rounded-sm transition-colors cursor-pointer" onClick={() => {
+                      setSelectedRecordIds(prev =>
+                        prev.includes(record.record_id)
+                          ? prev.filter(id => id !== record.record_id)
+                          : [...prev, record.record_id]
+                      );
+                    }}>
+                      <Checkbox
+                        id={`record-${record.record_id}`}
+                        checked={selectedRecordIds.includes(record.record_id)}
+                        onCheckedChange={() => { }} // Handled by div click for better UX
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{record.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{record.category} • {format(new Date(record.record_date), "MMM d, yyyy")}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-4">No records found to share.</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Duration */}
           <div className="space-y-2">

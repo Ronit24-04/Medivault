@@ -35,6 +35,7 @@ export interface CreateShareRequest {
     providerType: 'Hospital' | 'Doctor' | 'EmergencyContact';
     accessLevel: string;
     expiresOn?: string;
+    sharedRecordIds?: string;
 }
 
 export interface UpdateShareRequest {

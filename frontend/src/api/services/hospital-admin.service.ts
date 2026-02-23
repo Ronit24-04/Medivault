@@ -19,7 +19,7 @@ export interface HospitalSharedRecord {
     };
 }
 
-export type SharedRecordDecision = 'acknowledged' | 'rejected';
+export type SharedRecordDecision = 'acknowledged' | 'rejected' | 'active';
 
 export interface HospitalAlert {
     alert_id: number;

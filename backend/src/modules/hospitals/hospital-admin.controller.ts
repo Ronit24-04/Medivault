@@ -60,10 +60,10 @@ export class HospitalAdminController {
             const shareId = parseInt((req.params as any).shareId, 10);
             const { status } = req.body;
 
-            if (status !== 'acknowledged' && status !== 'rejected') {
+            if (status !== 'acknowledged' && status !== 'rejected' && status !== 'active') {
                 res.status(400).json({
                     success: false,
-                    message: 'Invalid status. Use acknowledged or rejected',
+                    message: 'Invalid status. Use acknowledged, rejected, or active',
                 });
                 return;
             }

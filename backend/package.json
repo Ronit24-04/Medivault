@@ -6,13 +6,13 @@
     "scripts": {
         "dev": "tsx watch src/server.ts",
         "build": "tsc",
-        "start": "node dist/server.js",
+        "start": "node dist/src/server.js",
         "prisma:generate": "prisma generate",
         "prisma:pull": "prisma db pull",
         "prisma:push": "prisma db push",
         "prisma:studio": "prisma studio",
         "test": "jest",
-        "lint": "eslint src --ext .ts"
+        "lint": "eslint . --ext .ts"
     },
     "keywords": [
         "medical",

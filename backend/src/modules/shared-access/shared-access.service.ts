@@ -10,6 +10,7 @@ interface CreateShareData {
     providerType: string;
     accessLevel: string;
     expiresOn?: string;
+    sharedRecordIds?: string;
 }
 
 interface UpdateShareData {
@@ -170,6 +171,7 @@ export class SharedAccessService {
                 provider_type: 'Hospital',
                 access_level: data.accessLevel,
                 expires_on: data.expiresOn ? new Date(data.expiresOn) : null,
+                shared_record_ids: data.sharedRecordIds,
                 // Hospital shares start as pending until the hospital accepts
                 status: data.providerType === 'Hospital' ? 'pending' : 'active',
             },

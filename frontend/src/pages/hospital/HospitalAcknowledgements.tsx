@@ -67,14 +67,14 @@ export default function HospitalAcknowledgements() {
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     id: number | null;
-    action: "acknowledged" | "rejected" | null;
+    action: "acknowledged" | "rejected" | "active" | null;
     patientName: string;
   }>({ open: false, id: null, action: null, patientName: "" });
 
   const items: AckItem[] = (sharedRecords ?? []).map((r) => ({
     ...r,
     localStatus:
-      r.status === "acknowledged"
+      r.status === "acknowledged" || r.status === "active"
         ? "acknowledged"
         : r.status === "rejected"
           ? "rejected"
@@ -98,7 +98,10 @@ export default function HospitalAcknowledgements() {
   const acknowledgedCount = items.filter((i) => i.localStatus === "acknowledged").length;
 
   const handleAction = (id: number, action: "acknowledged" | "rejected", patientName: string) => {
-    setConfirmDialog({ open: true, id, action, patientName });
+    // If user clicks Acknowledge, we actually want to set status to 'active' 
+    // so it shows up in Documents and allows file viewing.
+    const finalAction = action === "acknowledged" ? "active" : "rejected";
+    setConfirmDialog({ open: true, id, action: finalAction as any, patientName });
   };
 
   const confirmAction = () => {
@@ -327,10 +330,10 @@ export default function HospitalAcknowledgements() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {confirmDialog.action === "acknowledged" ? "Acknowledge Document" : "Reject Document"}
+              {confirmDialog.action === "active" || confirmDialog.action === "acknowledged" ? "Acknowledge Document" : "Reject Document"}
             </DialogTitle>
             <DialogDescription>
-              {confirmDialog.action === "acknowledged"
+              {confirmDialog.action === "active" || confirmDialog.action === "acknowledged"
                 ? `Acknowledge the document from ${confirmDialog.patientName}?`
                 : `Reject the document from ${confirmDialog.patientName}? This cannot be undone.`}
             </DialogDescription>
@@ -346,7 +349,7 @@ export default function HospitalAcknowledgements() {
               variant={confirmDialog.action === "rejected" ? "destructive" : "default"}
               onClick={confirmAction}
             >
-              {confirmDialog.action === "acknowledged" ? (
+              {confirmDialog.action === "active" || confirmDialog.action === "acknowledged" ? (
                 <><Check className="mr-2 h-4 w-4" />Acknowledge</>
               ) : (
                 <><X className="mr-2 h-4 w-4" />Reject</>

@@ -48,6 +48,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -415,6 +416,9 @@ export default function PatientRecords() {
               <FileText className="h-5 w-5 text-primary" />
               {viewingRecord?.title}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Viewing medical record details for {viewingRecord?.title}
+            </DialogDescription>
           </DialogHeader>
 
           {/* Record metadata */}

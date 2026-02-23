@@ -65,7 +65,8 @@ export default function HospitalDashboard() {
   ];
 
   const recentPatients = sharedRecords?.slice(0, 4).map((record) => ({
-    id: record.patient_id,
+    id: record.share_id,
+    patientId: record.patient_id,
     name: record.patient.full_name,
     lastVisit: formatDate(record.shared_on),
     status: record.status,
@@ -115,16 +116,14 @@ export default function HospitalDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
                     <p
-                      className={`text-2xl md:text-3xl font-bold ${
-                        isPendingAlertsCard ? "text-destructive" : ""
-                      }`}
+                      className={`text-2xl md:text-3xl font-bold ${isPendingAlertsCard ? "text-destructive" : ""
+                        }`}
                     >
                       {stat.value}
                     </p>
                     <div
-                      className={`flex items-center gap-1 text-sm mt-1 ${
-                        isPendingAlertsCard ? "text-destructive" : "text-success"
-                      }`}
+                      className={`flex items-center gap-1 text-sm mt-1 ${isPendingAlertsCard ? "text-destructive" : "text-success"
+                        }`}
                     >
                       <TrendingUp className="h-3 w-3" />
                       {isPendingAlertsCard ? "Needs Attention" : "Live"}

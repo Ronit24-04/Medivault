@@ -38,7 +38,12 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
-import { useHospitalSharedRecords, useAcceptShare, useRejectShare } from "@/hooks/useHospital";
+import {
+  useHospitalSharedRecords,
+  useAcceptShare,
+  useRejectShare,
+  useSharedRecordFiles,
+} from "@/hooks/useHospital";
 import { HospitalSharedRecord } from "@/api/services/hospital-admin.service";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -79,6 +84,7 @@ export default function HospitalDocuments() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewDoc, setViewDoc] = useState<HospitalSharedRecord | null>(null);
   const [actioningShareId, setActioningShareId] = useState<number | null>(null);
+  const { data: files, isLoading: filesLoading } = useSharedRecordFiles(viewDoc?.share_id ?? null);
 
   const filtered = (sharedRecords ?? []).filter((doc) => {
     const matchesSearch =
@@ -103,6 +109,17 @@ export default function HospitalDocuments() {
   const handleReject = (shareId: number) => {
     setActioningShareId(shareId);
     rejectShare(shareId, { onSettled: () => setActioningShareId(null) });
+  };
+
+  const handleDownloadFile = (file: any) => {
+    const a = document.createElement("a");
+    a.href = file.file_path;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.download = file.title;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
@@ -338,15 +355,45 @@ export default function HospitalDocuments() {
                 <p className="text-xs text-muted-foreground mb-1">Records Accessed</p>
                 <p className="text-sm font-medium">{viewDoc.records_accessed_count}</p>
               </div>
+
+              <div className="border-t pt-4">
+                <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Shared Files
+                </p>
+                {filesLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : files && files.length > 0 ? (
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                    {files.map((file) => (
+                      <div
+                        key={file.record_id}
+                        className="flex items-center justify-between p-2 rounded-md bg-muted/50 border border-border/50 text-sm"
+                      >
+                        <div className="min-w-0 flex-1 mr-2">
+                          <p className="font-medium truncate">{file.title}</p>
+                          <p className="text-xs text-muted-foreground">{file.category} • {formatDate(file.record_date)}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDownloadFile(file)}
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No specific files shared.</p>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-2">
-                <Button
-                  className="flex-1"
-                  onClick={() => { handleDownload(viewDoc); setViewDoc(null); }}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </Button>
-                <Button variant="outline" onClick={() => setViewDoc(null)}>
+                <Button variant="outline" className="w-full" onClick={() => setViewDoc(null)}>
                   Close
                 </Button>
               </div>

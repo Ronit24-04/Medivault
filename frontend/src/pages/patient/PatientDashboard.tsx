@@ -29,6 +29,7 @@ import { MedicalRecord } from "@/api/types";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -300,6 +301,9 @@ export default function PatientDashboard() {
               <FileText className="h-5 w-5 text-primary" />
               {viewingRecord?.title}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Summary of your recent medical record: {viewingRecord?.title}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-wrap gap-3 text-sm text-muted-foreground border-b pb-3">

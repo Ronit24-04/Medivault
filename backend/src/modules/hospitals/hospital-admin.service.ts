@@ -12,7 +12,7 @@ interface UpdateHospitalProfileData {
     longitude?: number;
 }
 
-type SharedRecordStatus = 'acknowledged' | 'rejected';
+type SharedRecordStatus = 'acknowledged' | 'rejected' | 'active';
 
 export class HospitalAdminService {
     private async getHospitalByAdminId(adminId: number) {
@@ -138,7 +138,6 @@ export class HospitalAdminService {
             where: {
                 share_id: shareId,
                 hospital_id: hospital.hospital_id,
-                status: 'active',
             },
         });
 
@@ -146,10 +145,58 @@ export class HospitalAdminService {
             throw new AppError(404, 'Shared access not found');
         }
 
+        // Check if access is active
+        if (share.status !== 'active' && share.status !== 'acknowledged') {
+            return []; // Return empty list instead of 403 for revoked/rejected shares
+        }
+
+        // Check for expiration
+        if (share.expires_on && new Date() > new Date(share.expires_on)) {
+            // Update status to expired
+            await prisma.sharedAccess.update({
+                where: { share_id: shareId },
+                data: { status: 'expired' },
+            });
+            return []; // Return empty list instead of 403 for expired shares
+        }
+
+        // Query medical records with selective filters
+        const whereClause: any = {
+            patient_id: share.patient_id,
+        };
+
+        // Filter by access level
+        if (share.access_level === 'Lab Reports Only') {
+            whereClause.category = { contains: 'lab' };
+        } else if (share.access_level === 'Prescriptions Only') {
+            whereClause.category = { contains: 'prescription' };
+        } else if (share.access_level === 'Imaging Records Only') {
+            whereClause.OR = [
+                { category: { contains: 'radiology' } },
+                { category: { contains: 'imaging' } },
+                { category: { contains: 'scan' } },
+                { category: { contains: 'xray' } },
+            ];
+        }
+
+        // Filter by specific record IDs if provided
+        if (share.shared_record_ids) {
+            try {
+                const recordIds = JSON.parse(share.shared_record_ids);
+                if (Array.isArray(recordIds) && recordIds.length > 0) {
+                    whereClause.record_id = { in: recordIds.map((id: any) => parseInt(id, 10)) };
+                }
+            } catch (e) {
+                // If not JSON, maybe comma-separated
+                const recordIds = share.shared_record_ids.split(',').map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id));
+                if (recordIds.length > 0) {
+                    whereClause.record_id = { in: recordIds };
+                }
+            }
+        }
+
         const records = await prisma.medicalRecord.findMany({
-            where: {
-                patient_id: share.patient_id,
-            },
+            where: whereClause,
             orderBy: { record_date: 'desc' },
             select: {
                 record_id: true,
@@ -160,6 +207,12 @@ export class HospitalAdminService {
                 file_type: true,
                 description: true,
             },
+        });
+
+        // Update access count
+        await prisma.sharedAccess.update({
+            where: { share_id: shareId },
+            data: { records_accessed_count: { increment: 1 } },
         });
 
         return records;
