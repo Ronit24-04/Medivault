@@ -1,3 +1,4 @@
+import { admin_user_type, admin_account_status } from '@prisma/client';
 import prisma from '../../config/database';
 import { hashPassword, comparePassword } from '../../utils/bcrypt.util';
 import { generateTokenPair, verifyRefreshToken } from '../../utils/jwt.util';
@@ -37,9 +38,9 @@ export class AuthService {
             data: {
                 email: data.email,
                 password_hash: passwordHash,
-                phone_number: data.phoneNumber,
-                user_type: data.userType,
-                account_status: 'active',
+                phone_number: data.phoneNumber || '',
+                user_type: data.userType as admin_user_type,
+                account_status: 'active' as admin_account_status,
                 email_verified: false,
             },
             select: {
@@ -65,6 +66,7 @@ export class AuthService {
                     full_name: data.fullName,
                     address: '',
                     date_of_birth: new Date('1900-01-01'),
+                    gender: 'Other',
                     relationship: 'self',
                     is_primary: true,
                 },
@@ -128,7 +130,7 @@ export class AuthService {
         const tokens = generateTokenPair({
             adminId: admin.admin_id,
             email: admin.email,
-            userType: admin.user_type,
+            userType: admin.user_type as string,
         });
 
         return {

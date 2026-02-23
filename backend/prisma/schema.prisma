@@ -8,46 +8,45 @@ datasource db {
 }
 
 model Admin {
-  admin_id        Int       @id @default(autoincrement())
-  email           String    @unique @db.VarChar(100)
-  password_hash   String    @db.VarChar(255)
-  phone_number    String?   @db.VarChar(20)
-  user_type       String    @db.VarChar(20)
-  created_at      DateTime  @default(now()) @db.Timestamp(0)
-  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp(0)
-  last_login      DateTime? @db.Timestamp(0)
-  account_status  String    @default("active") @db.VarChar(20)
-  email_verified  Boolean   @default(false) @db.TinyInt
-  
-  patients          Patient[]
+  email          String               @unique @db.VarChar(100)
+  password_hash  String               @db.VarChar(255)
+  phone_number   String               @db.VarChar(20)
+  user_type      admin_user_type
+  created_at     DateTime             @default(now()) @db.Timestamp(0)
+  updated_at     DateTime             @default(now()) @updatedAt @db.Timestamp(0)
+  last_login     DateTime?            @db.Timestamp(0)
+  account_status admin_account_status @default(active)
+  email_verified Boolean              @default(false)
+  admin_id       Int                  @id @default(autoincrement())
+  hospital       Hospital[]
+  patients       Patient[]
 
-@@index([email])
-@@index([user_type])
+  @@index([email])
+  @@index([user_type])
   @@map("admin")
 }
 
 model Patient {
-  patient_id       Int              @id @default(autoincrement())
-  admin_id         Int
-  full_name        String           @db.VarChar(100)
-  address          String           @db.VarChar(255)
-  date_of_birth    DateTime?        @db.Date
-  gender           String?          @db.VarChar(10)
-  blood_type       String?          @db.VarChar(5)
-  height_cm        Float?           @db.Float
-  weight_kg        Float?           @db.Float
-  profile_image    String?          @db.VarChar(255)
-  relationship     String           @db.VarChar(50)
-  emergency_pin    String?          @db.VarChar(6)
-  is_primary       Boolean          @default(false) @db.TinyInt
-  created_at       DateTime         @default(now()) @db.Timestamp(0)
-  updated_at       DateTime         @default(now()) @updatedAt @db.Timestamp(0)
-
-  admin            Admin              @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade)
-  medicalRecords   MedicalRecord[]
+  admin_id          Int
+  full_name         String             @db.VarChar(100)
+  relationship      String?            @db.VarChar(50)
+  address           String?            @db.Text
+  date_of_birth     DateTime           @db.Date
+  gender            String             @db.VarChar(10)
+  blood_type        String?            @db.VarChar(5)
+  emergency_pin     String?            @db.VarChar(6)
+  profile_picture   String?            @db.VarChar(255)
+  is_primary        Boolean            @default(true)
+  created_at        DateTime           @default(now()) @db.Timestamp(0)
+  updated_at        DateTime           @default(now()) @updatedAt @db.Timestamp(0)
+  height_cm         Decimal?           @db.Decimal(5, 2)
+  patient_id        Int                @id @default(autoincrement())
+  weight_kg         Decimal?           @db.Decimal(5, 2)
+  emergencyAlerts   EmergencyAlert[]
   emergencyContacts EmergencyContact[]
-  emergencyAlerts  EmergencyAlert[]
-  sharedAccess     SharedAccess[]
+  medicalRecords    MedicalRecord[]
+  admin             Admin              @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade)
+  sharedAccess      SharedAccess[]
 
   @@index([admin_id])
   @@index([is_primary])
@@ -55,24 +54,23 @@ model Patient {
 }
 
 model MedicalRecord {
-  record_id        Int      @id @default(autoincrement())
-  patient_id       Int
-  category      String   @db.VarChar(50)
-  title            String   @db.VarChar(200)
-  description      String?  @db.Text
-  record_date      DateTime @db.Date
-  physician_name      String?  @db.VarChar(100)
-  physician_speciality String? @db.VarChar(100)
-  facility_name    String?  @db.VarChar(200)
-  file_path         String   @db.VarChar(500)
-  file_type        String   @db.VarChar(50)
-  file_size_bytes        Int?
-  is_critical      Boolean  @default(false) @db.TinyInt
-  critical_data             String?  @db.Text
-  created_at       DateTime @default(now()) @db.Timestamp(0)
-  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(0)
-
-  patient          Patient  @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  patient_id           Int
+  title                String   @db.VarChar(200)
+  category             String   @db.VarChar(50)
+  file_type            String   @db.VarChar(50)
+  file_size_bytes      Int?
+  record_date          DateTime @db.Date
+  description          String?  @db.Text
+  is_critical          Boolean  @default(false)
+  created_at           DateTime @default(now()) @db.Timestamp(0)
+  updated_at           DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  physician_name       String?  @db.VarChar(100)
+  physician_speciality String?  @db.VarChar(100)
+  file_path            String   @db.VarChar(500)
+  facility_name        String?  @db.VarChar(200)
+  record_id            Int      @id @default(autoincrement())
+  critical_data        String?  @db.Text
+  patient              Patient  @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
 
   @@index([patient_id])
   @@index([record_date])
@@ -81,42 +79,40 @@ model MedicalRecord {
 }
 
 model EmergencyContact {
-  contact_id   Int      @id @default(autoincrement())
   patient_id   Int
-  contact_name         String   @db.VarChar(100)
-  relationship String   @db.VarChar(50)
-  phone_number String   @db.VarChar(15)
-  email        String?  @db.VarChar(100)
-  priority     Int      @default(1)
-  is_active    Boolean  @default(true) @db.TinyInt
-  created_at   DateTime @default(now()) @db.Timestamp(0)
-
-  patient        Patient    @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
-  sharedAccess   SharedAccess[]
+  relationship String         @db.VarChar(50)
+  phone_number String         @db.VarChar(15)
+  email        String?        @db.VarChar(100)
+  is_active    Boolean        @default(true)
+  created_at   DateTime       @default(now()) @db.Timestamp(0)
+  contact_id   Int            @id @default(autoincrement())
+  name         String         @db.VarChar(100)
+  priority     Int            @default(1)
+  patient      Patient        @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  sharedAccess SharedAccess[]
 
   @@index([patient_id])
-   @@index([is_active])
+  @@index([is_active])
   @@map("emergency_contact")
 }
 
 model SharedAccess {
-  share_id              Int       @id @default(autoincrement())
-  patient_id            Int
-  hospital_id           Int?
-  contact_id            Int?
-  provider_name         String    @db.VarChar(200)
-  provider_type         String    @db.VarChar(20)
-  access_level          String    @db.VarChar(100)
-  shared_on             DateTime  @default(now()) @db.Timestamp(0)
-  expires_on            DateTime? @db.Timestamp(0)
-  status                String    @default("active") @db.VarChar(20)
-  records_accessed_count Int      @default(0)
-  created_at            DateTime  @default(now()) @db.Timestamp(0)
-  updated_at            DateTime  @default(now()) @updatedAt @db.Timestamp(0)
-
-  patient               Patient          @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
-  hospital              Hospital?        @relation(fields: [hospital_id], references: [hospital_id], onDelete: SetNull)
-  emergencyContact      EmergencyContact? @relation(fields: [contact_id], references: [contact_id], onDelete: SetNull)
+  share_id               Int               @id @default(autoincrement())
+  patient_id             Int
+  hospital_id            Int?
+  contact_id             Int?
+  provider_name          String            @db.VarChar(200)
+  provider_type          String            @db.VarChar(20)
+  access_level           String            @db.VarChar(100)
+  shared_on              DateTime          @default(now()) @db.Timestamp(0)
+  expires_on             DateTime?         @db.Timestamp(0)
+  status                 String            @default("active") @db.VarChar(20)
+  records_accessed_count Int               @default(0)
+  created_at             DateTime          @default(now()) @db.Timestamp(0)
+  updated_at             DateTime          @default(now()) @updatedAt @db.Timestamp(0)
+  emergencyContact       EmergencyContact? @relation(fields: [contact_id], references: [contact_id])
+  hospital               Hospital?         @relation(fields: [hospital_id], references: [hospital_id])
+  patient                Patient           @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
 
   @@index([patient_id])
   @@index([hospital_id])
@@ -127,52 +123,75 @@ model SharedAccess {
 }
 
 model EmergencyAlert {
-  alert_id             Int       @id @default(autoincrement())
   patient_id           Int
   hospital_id          Int?
-  patient_location     String?   @db.Text
-  critical_summary     String?   @db.Text
-  alert_message        String?   @db.Text
-  status               String    @db.VarChar(20)
-  sent_to_hospital     Boolean   @default(false) @db.TinyInt
-  sent_to_contacts     Boolean   @default(false) @db.TinyInt
-  contact_ids_notified String?   @db.Text
-  sent_at              DateTime? @db.Timestamp(0)
-  acknowledged_at      DateTime? @db.Timestamp(0)
-  resolved_at          DateTime? @db.Timestamp(0)
-
-  patient              Patient   @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
-  hospital             Hospital? @relation(fields: [hospital_id], references: [hospital_id], onDelete: SetNull)
+  patient_location     String?                @db.Text
+  critical_summary     String?                @db.Text
+  alert_message        String?                @db.Text
+  status               emergency_alert_status
+  sent_to_hospital     Boolean                @default(false)
+  sent_to_contacts     Boolean                @default(false)
+  contact_ids_notified String?                @db.Text
+  sent_at              DateTime?              @db.Timestamp(0)
+  acknowledged_at      DateTime?              @db.Timestamp(0)
+  resolved_at          DateTime?              @db.Timestamp(0)
+  alert_id             Int                    @id @default(autoincrement())
+  hospital             Hospital?              @relation(fields: [hospital_id], references: [hospital_id])
+  patient              Patient                @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
 
   @@index([patient_id])
   @@index([hospital_id])
-  @@index([status])
   @@index([sent_at])
   @@map("emergency_alert")
 }
 
 model Hospital {
-  hospital_id     Int       @id @default(autoincrement())
-  admin_id        Int?
-  address         String    @db.Text
-  city            String    @db.VarChar(100)
-  state           String    @db.VarChar(100)
-  phone_number    String    @db.VarChar(15)
-  email           String?   @db.VarChar(100)
-  latitude        Float?    @db.Float
-  longitude       Float?    @db.Float
-  hospital_type   String    @db.VarChar(50)
-  rating          Float?    @db.Float
-  is_verified     Boolean   @default(false) @db.TinyInt
-  created_at      DateTime  @default(now()) @db.Timestamp(0)
-  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp(0)
-  hospital_name   String    @db.VarChar(200)
-
+  admin_id        Int
+  address         String                 @db.Text
+  city            String                 @db.VarChar(100)
+  state           String                 @db.VarChar(100)
+  phone_number    String                 @db.VarChar(15)
+  email           String?                @db.VarChar(100)
+  latitude        Float?                 @db.Float
+  longitude       Float?                 @db.Float
+  hospital_type   hospital_hospital_type
+  rating          Float?                 @db.Float
+  is_verified     Boolean                @default(false)
+  created_at      DateTime               @default(now()) @db.Timestamp(0)
+  updated_at      DateTime               @default(now()) @updatedAt @db.Timestamp(0)
+  hospital_id     Int                    @id @default(autoincrement())
+  hospital_name   String                 @db.VarChar(200)
   emergencyAlerts EmergencyAlert[]
+  admin           Admin                  @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade)
   sharedAccess    SharedAccess[]
 
   @@index([city])
   @@index([hospital_type])
   @@index([is_verified])
+  @@index([admin_id], map: "hospital_admin_id_fkey")
   @@map("hospital")
+}
+
+enum admin_user_type {
+  patient
+  hospital
+}
+
+enum emergency_alert_status {
+  resolve
+  sent
+  acknowledge
+}
+
+enum admin_account_status {
+  active
+  suspended
+  deleted
+}
+
+enum hospital_hospital_type {
+  clinic
+  government
+  private
+  specialty
 }

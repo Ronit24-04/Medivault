@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "profile": {
+    "admin_id": 15,
+    "address": "Dempo Vision Building, La Campala Colony, Miramar, Panaji, Goa - 403001",
+    "city": "Panaji",
+    "state": "Goa",
+    "phone_number": "8980636469",
+    "email": "mahaleroni004@gmail.com",
+    "latitude": null,
+    "longitude": null,
+    "hospital_type": "private",
+    "rating": null,
+    "is_verified": false,
+    "created_at": "2026-02-20T11:26:04.000Z",
+    "updated_at": "2026-02-22T17:15:06.000Z",
+    "hospital_id": 1,
+    "hospital_name": "Wisdom Hospital"
+  }
+}

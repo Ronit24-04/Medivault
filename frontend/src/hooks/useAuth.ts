@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { authService, LoginRequest, RegisterRequest, AdminProfile } from '../api/services';
 import { toast } from 'sonner';
 
@@ -99,9 +100,9 @@ export const useResetPassword = () => {
 export const useLogout = () => {
     const queryClient = useQueryClient();
 
-    return () => {
+    return useCallback(() => {
         authService.logout();
         queryClient.clear();
         toast.success('Logged out successfully');
-    };
+    }, [queryClient]);
 };

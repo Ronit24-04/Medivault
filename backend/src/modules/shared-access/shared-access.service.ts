@@ -43,7 +43,7 @@ export class SharedAccessService {
                 state: '',
                 phone_number: '',
                 email,
-                hospital_type: 'General',
+                hospital_type: 'private',
             },
             select: {
                 hospital_id: true,
@@ -83,7 +83,7 @@ export class SharedAccessService {
                 emergencyContact: {
                     select: {
                         contact_id: true,
-                        contact_name: true,
+                        name: true,
                         relationship: true,
                         phone_number: true,
                     },
@@ -184,7 +184,7 @@ export class SharedAccessService {
                 emergencyContact: {
                     select: {
                         contact_id: true,
-                        contact_name: true,
+                        name: true,
                         relationship: true,
                         phone_number: true,
                     },
@@ -246,7 +246,7 @@ export class SharedAccessService {
                 emergencyContact: {
                     select: {
                         contact_id: true,
-                        contact_name: true,
+                        name: true,
                         relationship: true,
                         phone_number: true,
                     },

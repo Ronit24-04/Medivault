@@ -36,7 +36,7 @@ export class EmergencyService {
         const contact = await prisma.emergencyContact.create({
             data: {
                 patient_id: data.patientId,
-                contact_name: data.name,
+                name: data.name,
                 relationship: data.relationship,
                 phone_number: data.phoneNumber,
                 email: data.email,
@@ -80,7 +80,7 @@ export class EmergencyService {
         const updated = await prisma.emergencyContact.update({
             where: { contact_id: contactId },
             data: {
-                contact_name: data.name,
+                name: data.name,
                 relationship: data.relationship,
                 phone_number: data.phoneNumber,
                 email: data.email,

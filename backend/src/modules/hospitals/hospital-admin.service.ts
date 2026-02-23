@@ -82,7 +82,7 @@ export class HospitalAdminService {
                 email: data.email,
                 latitude: data.latitude,
                 longitude: data.longitude,
-                hospital_type: 'General',
+                hospital_type: 'private',
             },
         });
     }

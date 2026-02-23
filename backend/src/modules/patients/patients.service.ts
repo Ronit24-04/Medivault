@@ -33,7 +33,7 @@ export class PatientsService {
                 full_name: data.fullName,
                 address: data.address || '',
                 date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : new Date('2000-01-01'),
-                gender: data.gender,
+                gender: data.gender || 'Other',
                 blood_type: data.bloodType,
                 height_cm: data.height,
                 weight_kg: data.weight,
@@ -141,8 +141,8 @@ export class PatientsService {
         const patient = await prisma.patient.update({
             where: { patient_id: patientId },
             data: {
-                profile_image: profileImagePath,
-            } as any,
+                profile_picture: profileImagePath, // Property exists in schema and generated types
+            },
         });
 
         return patient;

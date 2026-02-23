@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -63,7 +63,10 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
 
   // Back-button auto-logout: push a sentinel state so we can detect back navigation
   useEffect(() => {
-    history.pushState({ dashboard: true }, "");
+    // Only push if we haven't already pushed our sentinel
+    if (window.history.state?.dashboard !== true) {
+      window.history.pushState({ dashboard: true }, "");
+    }
 
     const handlePopState = () => {
       if (userType === "patient") {
@@ -176,6 +179,10 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
+              <div className="sr-only">
+                <SheetTitle>Navigation Menu</SheetTitle>
+                <SheetDescription>Access different sections of your dashboard</SheetDescription>
+              </div>
               <div className="flex h-16 items-center gap-2.5 px-6 border-b">
                 <MediVaultLogoIcon size={36} />
                 <span className="text-xl font-semibold tracking-tight">mediVault</span>

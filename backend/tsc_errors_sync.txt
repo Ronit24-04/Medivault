@@ -1,0 +1,5 @@
+src/debug-500.ts(1,19): error TS2307: Cannot find module 'axios' or its corresponding type declarations.
+src/modules/auth/auth.service.ts(41,17): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/patients/patients.service.ts(36,17): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
