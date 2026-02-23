@@ -7,11 +7,53 @@ interface GetHospitalsFilters {
     latitude?: string;
     longitude?: string;
     radius?: string; // in km
+    includeUnverified?: string;
 }
 
 export class HospitalsService {
     async getHospitals(filters: GetHospitalsFilters) {
-        const where: any = { is_verified: true };
+        const includeUnverified = String(filters.includeUnverified || '').toLowerCase() === 'true';
+        const where: any = includeUnverified ? {} : { is_verified: true };
+
+        if (includeUnverified && filters.search) {
+            const registeredHospitals = await prisma.admin.findMany({
+                where: {
+                    user_type: 'hospital',
+                    account_status: 'active',
+                    email: { contains: filters.search },
+                },
+                select: {
+                    admin_id: true,
+                    email: true,
+                    phone_number: true,
+                },
+            });
+
+            for (const hospitalAdmin of registeredHospitals) {
+                const existingProfile = await prisma.hospital.findFirst({
+                    where: { admin_id: hospitalAdmin.admin_id },
+                    select: { hospital_id: true },
+                });
+
+                if (!existingProfile) {
+                    const fallbackName =
+                        hospitalAdmin.email.split('@')[0].replace(/[._-]/g, ' ').trim() || 'Hospital';
+
+                    await prisma.hospital.create({
+                        data: {
+                            admin_id: hospitalAdmin.admin_id,
+                            hospital_name: fallbackName,
+                            address: '',
+                            city: '',
+                            state: '',
+                            phone_number: hospitalAdmin.phone_number || '',
+                            email: hospitalAdmin.email,
+                            hospital_type: 'General',
+                        },
+                    });
+                }
+            }
+        }
 
         if (filters.city) {
             where.city = { contains: filters.city };

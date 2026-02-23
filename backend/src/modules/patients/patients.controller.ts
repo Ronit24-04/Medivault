@@ -58,7 +58,10 @@ export class PatientsController {
 
     async updateProfileImage(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(
+                Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId,
+                10
+            );
 
             if (!req.file?.filename) {
                 throw new AppError(400, 'Profile image file is required');
@@ -109,7 +112,10 @@ export class PatientsController {
 
     async verifyProfilePin(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const patientId = parseInt(req.params.patientId);
+            const patientId = parseInt(
+                Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId,
+                10
+            );
             const pin = String(req.body?.pin || '');
             const result = await patientsService.verifyProfilePin(req.admin!.adminId, patientId, pin);
             res.status(200).json({

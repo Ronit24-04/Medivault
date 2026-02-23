@@ -76,8 +76,13 @@ class SharedAccessService {
     }
 
     async searchHospitals(query: string): Promise<Hospital[]> {
-        if (!query || query.trim().length < 2) return [];
-        const response = await apiClient.get('/hospitals', { params: { search: query.trim() } });
+        if (!query || query.trim().length < 1) return [];
+        const response = await apiClient.get('/hospitals', {
+            params: {
+                search: query.trim(),
+                includeUnverified: 'true',
+            },
+        });
         return response.data.data ?? [];
     }
 }

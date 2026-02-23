@@ -7,6 +7,33 @@ interface EmergencyLocation {
 }
 
 export class EmergencyAlertsService {
+    private normalizePhoneNumber(phoneNumber: string): string | null {
+        const trimmed = phoneNumber.trim();
+        if (!trimmed) {
+            return null;
+        }
+
+        if (trimmed.startsWith('+')) {
+            const digits = trimmed.slice(1).replace(/\D/g, '');
+            if (digits.length >= 10 && digits.length <= 15) {
+                return `+${digits}`;
+            }
+            return null;
+        }
+
+        const digits = trimmed.replace(/\D/g, '');
+        if (digits.length === 10) {
+            return `+1${digits}`;
+        }
+        if (digits.length === 11 && digits.startsWith('1')) {
+            return `+${digits}`;
+        }
+        if (digits.length >= 10 && digits.length <= 15) {
+            return `+${digits}`;
+        }
+        return null;
+    }
+
     private toRadians(value: number) {
         return (value * Math.PI) / 180;
     }
@@ -97,10 +124,6 @@ export class EmergencyAlertsService {
             authToken.includes('your_twilio_auth_token') ||
             fromPhoneNumber.includes('XXXXXXXX');
 
-        if (hasPlaceholderConfig) {
-            throw new AppError(500, 'Twilio is not configured. Add real TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER.');
-        }
-
         const nearestHospitalId = await this.getNearestHospitalId(location);
 
         const alert = await prisma.emergencyAlert.create({
@@ -114,35 +137,67 @@ export class EmergencyAlertsService {
                 alert_message: '🚨 EMERGENCY ALERT FROM MEDIVAULT',
                 status: 'sent',
                 sent_to_hospital: nearestHospitalId ? (true as any) : (false as any),
-                sent_to_contacts: true as any,
+                sent_to_contacts: false as any,
                 sent_at: new Date(),
             },
         });
+
+        if (hasPlaceholderConfig) {
+            console.warn('Emergency SMS skipped: Twilio is not configured');
+            return alert;
+        }
 
         let twilioClientFactory: any;
         try {
             twilioClientFactory = require('twilio');
         } catch (error) {
-            throw new AppError(500, 'Twilio SDK is not installed');
+            console.warn('Emergency SMS skipped: Twilio SDK is not installed');
+            return alert;
         }
 
         const client: any = twilioClientFactory(accountSid, authToken);
 
-        try {
-            await Promise.all(
-                contacts.map((contact) =>
-                    client.messages.create({
-                        body: '🚨 Emergency Alert! Patient needs help. Open Medivault.',
-                        from: fromPhoneNumber,
-                        to: contact.phone_number,
-                    })
-                )
-            );
-        } catch (error: any) {
-            const twilioMessage = error?.message || 'Failed to send emergency SMS';
-            console.error('Twilio error:', error);
-            // Don't throw if we want the alert record to stay, but here we throw
-            throw new AppError(500, twilioMessage);
+        const recipients = contacts
+            .map((contact) => ({
+                contactId: contact.contact_id,
+                to: this.normalizePhoneNumber(contact.phone_number),
+            }))
+            .filter((recipient) => recipient.to !== null) as Array<{
+            contactId: number;
+            to: string;
+        }>;
+
+        if (!recipients.length) {
+            throw new AppError(400, 'No valid emergency contact phone numbers found');
+        }
+
+        const results = await Promise.allSettled(
+            recipients.map((recipient) =>
+                client.messages.create({
+                    body: '🚨 Emergency Alert! Patient needs help. Open Medivault.',
+                    from: fromPhoneNumber,
+                    to: recipient.to,
+                })
+            )
+        );
+
+        const successfulContactIds: number[] = [];
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                successfulContactIds.push(recipients[index].contactId);
+                return;
+            }
+            console.error('Twilio delivery failure:', result.reason);
+        });
+
+        if (successfulContactIds.length > 0) {
+            await prisma.emergencyAlert.update({
+                where: { alert_id: alert.alert_id },
+                data: {
+                    sent_to_contacts: true as any,
+                    contact_ids_notified: successfulContactIds.join(','),
+                },
+            });
         }
 
         return alert;

@@ -127,7 +127,7 @@ function ShareDialog({ patientId }: { patientId: number }) {
   // Debounced hospital search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!searchQuery || searchQuery.trim().length < 2) {
+    if (!searchQuery || searchQuery.trim().length < 1) {
       setSearchResults([]);
       setShowDropdown(false);
       return;
@@ -182,7 +182,7 @@ function ShareDialog({ patientId }: { patientId: number }) {
         patientId,
         data: {
           hospitalId: selectedHospital.hospital_id,
-          providerName: selectedHospital.hospital_name,
+          providerName: selectedHospital.email || selectedHospital.hospital_name,
           providerType: "Hospital",
           accessLevel,
           expiresOn: computeExpiresOn(),

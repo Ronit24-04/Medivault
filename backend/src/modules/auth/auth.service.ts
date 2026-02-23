@@ -21,7 +21,7 @@ interface LoginData {
 export class AuthService {
     async register(data: RegisterData) {
         // Check if admin already exists
-        const existingAdmin = await prisma.admin.findUnique({
+        const existingAdmin = await prisma.admin.findFirst({
             where: { email: data.email },
         });
 
@@ -71,6 +71,25 @@ export class AuthService {
             });
         }
 
+        // Ensure hospital users are searchable in shared access by creating a hospital profile row
+        if (data.userType === 'hospital') {
+            const fallbackName =
+                data.fullName?.trim() || data.email.split('@')[0].replace(/[._-]/g, ' ').trim() || 'Hospital';
+
+            await prisma.hospital.create({
+                data: {
+                    admin_id: admin.admin_id,
+                    hospital_name: fallbackName,
+                    address: '',
+                    city: '',
+                    state: '',
+                    phone_number: data.phoneNumber || '',
+                    email: data.email,
+                    hospital_type: 'General',
+                },
+            });
+        }
+
         return {
             admin,
             message: 'Registration successful. Please check your email to verify your account.',
@@ -79,7 +98,7 @@ export class AuthService {
 
     async login(data: LoginData) {
         // Find admin
-        const admin = await prisma.admin.findUnique({
+        const admin = await prisma.admin.findFirst({
             where: { email: data.email },
         });
 
@@ -151,7 +170,7 @@ export class AuthService {
     }
 
     async forgotPassword(email: string) {
-        const admin = await prisma.admin.findUnique({
+        const admin = await prisma.admin.findFirst({
             where: { email },
         });
 

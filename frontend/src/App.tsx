@@ -1,7 +1,8 @@
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { useProfileStore } from "@/stores/useProfileStore";
 import Index from "./pages/Index";
 import Install from "./pages/Install";
 import Login from "./pages/Login";
@@ -24,6 +25,17 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const PatientLockGuard = () => {
+  const isLocked = useProfileStore((state) => state.isLocked);
+  const location = useLocation();
+
+  if (isLocked && location.pathname !== "/patient/unlock") {
+    return <Navigate to="/patient/unlock" replace />;
+  }
+
+  return <Outlet />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -37,14 +49,16 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Patient Routes */}
-          <Route path="/patient/dashboard" element={<PatientDashboard />} />
-          <Route path="/patient/records" element={<PatientRecords />} />
-          <Route path="/patient/upload" element={<UploadRecord />} />
-          <Route path="/patient/shared" element={<SharedAccess />} />
-          <Route path="/patient/profile" element={<PatientProfile />} />
-          <Route path="/patient/settings" element={<PatientSettings />} />
           <Route path="/patient/unlock" element={<PatientUnlock />} />
+          <Route element={<PatientLockGuard />}>
+            {/* Patient Routes */}
+            <Route path="/patient/dashboard" element={<PatientDashboard />} />
+            <Route path="/patient/records" element={<PatientRecords />} />
+            <Route path="/patient/upload" element={<UploadRecord />} />
+            <Route path="/patient/shared" element={<SharedAccess />} />
+            <Route path="/patient/profile" element={<PatientProfile />} />
+            <Route path="/patient/settings" element={<PatientSettings />} />
+          </Route>
 
           {/* Hospital Routes */}
           <Route path="/hospital/dashboard" element={<HospitalDashboard />} />
