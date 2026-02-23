@@ -67,7 +67,7 @@ export const patientsService = {
         location?: { latitude?: number; longitude?: number }
     ): Promise<void> {
         try {
-            await apiClient.post(`/patients/${patientId}/send-alert`, location || {});
+            await apiClient.post(`/emergency-alerts/${patientId}/send-alert`, location || {});
         } catch (error) {
             throw new Error(handleApiError(error));
         }
@@ -85,12 +85,23 @@ export const patientsService = {
     async sendEmergencyAlertByEmail(
         email: string,
         location?: { latitude?: number; longitude?: number }
-    ): Promise<void> {
+    ): Promise<any> {
         try {
-            await apiClient.post('/patients/public/send-alert', {
+            const response = await apiClient.post<ApiResponse>('/emergency-alerts/public/send-alert', {
                 email,
                 ...(location || {}),
             });
+            return response.data.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
+
+    // Get public emergency info by email
+    async getPublicEmergencyInfo(email: string): Promise<any> {
+        try {
+            const response = await apiClient.get<ApiResponse>(`/patients/public/emergency-info?email=${encodeURIComponent(email)}`);
+            return response.data.data;
         } catch (error) {
             throw new Error(handleApiError(error));
         }

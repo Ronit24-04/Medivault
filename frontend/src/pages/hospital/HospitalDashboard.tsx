@@ -78,6 +78,21 @@ export default function HospitalDashboard() {
     return "secondary" as const;
   };
 
+  const getPriorityBadge = (priority?: string) => {
+    switch (priority) {
+      case "low":
+        return <Badge className="bg-blue-100 text-blue-700 border-blue-200">Low</Badge>;
+      case "medium":
+        return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Medium</Badge>;
+      case "high":
+        return <Badge className="bg-orange-100 text-orange-700 border-orange-200">High</Badge>;
+      case "emergency":
+        return <Badge className="bg-red-100 text-red-700 border-red-200 animate-pulse">Emergency</Badge>;
+      default:
+        return null;
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout userType="hospital">
@@ -167,9 +182,14 @@ export default function HospitalDashboard() {
                     <p className="font-medium">{patient.name}</p>
                     <p className="text-sm text-muted-foreground">Shared {patient.lastVisit}</p>
                   </div>
-                  <Badge variant={getStatusVariant(patient.status)}>
-                    {patient.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={getStatusVariant(patient.status)}>
+                      {patient.status}
+                    </Badge>
+                    {sharedRecords?.find(r => r.share_id === patient.id)?.priority && (
+                      getPriorityBadge(sharedRecords?.find(r => r.share_id === patient.id)?.priority)
+                    )}
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"

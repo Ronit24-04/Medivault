@@ -126,6 +126,19 @@ export class PatientsController {
             next(error);
         }
     }
+
+    async getPublicEmergencyInfo(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const email = String(req.query.email || '');
+            const info = await patientsService.getPublicEmergencyInfo(email);
+            res.status(200).json({
+                success: true,
+                data: info,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export const patientsController = new PatientsController();

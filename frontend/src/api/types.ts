@@ -53,14 +53,14 @@ export interface Patient {
     date_of_birth?: string;
     gender?: string;
     blood_type?: string;
-    height?: number;
-    weight?: number;
+    height_cm?: number;
+    weight_kg?: number;
     profile_image?: string;
     profile_picture?: string;
     allergies?: string;
     chronic_conditions?: string;
     current_medications?: string;
-    relationship: string;
+    relationship?: string;
     is_primary: boolean;
     created_at: string;
     updated_at: string;

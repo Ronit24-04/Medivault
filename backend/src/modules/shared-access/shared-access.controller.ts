@@ -63,6 +63,21 @@ export class SharedAccessController {
         }
     }
 
+    async getSharedFiles(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const patientId = parseInt(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId);
+            const shareId = parseInt(Array.isArray(req.params.shareId) ? req.params.shareId[0] : req.params.shareId);
+            const files = await sharedAccessService.getSharedFiles(req.admin!.adminId, patientId, shareId);
+
+            res.status(200).json({
+                success: true,
+                data: files,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async getStats(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const patientId = parseInt(Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId);

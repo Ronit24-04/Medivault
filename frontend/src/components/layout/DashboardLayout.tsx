@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import {
   Menu,
   LayoutDashboard,
@@ -51,7 +52,7 @@ const hospitalNavItems = [
   { href: "/hospital/documents", icon: FolderOpen, label: "Documents" },
   { href: "/hospital/acknowledgements", icon: FileText, label: "Acknowledgements" },
   { href: "/hospital/alerts", icon: Bell, label: "Alerts" },
-  { href: "/hospital/settings", icon: Settings, label: "Settings" },
+  { href: "/hospital/profile", icon: User, label: "Profile" },
 ];
 
 export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
@@ -71,10 +72,7 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
     const handlePopState = () => {
       if (userType === "patient") {
         lockProfile();
-        navigate("/patient/unlock", { replace: true });
-        return;
       }
-
       logout();
       navigate("/login", { replace: true });
     };
@@ -82,6 +80,7 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [lockProfile, logout, navigate, userType]);
+
 
   // Fetch user profile data
   const { data: profile } = useProfile();
@@ -93,10 +92,39 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
   // For hospital users, fetch the hospital profile name from Settings
   const { data: hospitalProfile } = useHospitalProfile();
   const { data: hospitalAlerts } = useHospitalAlerts();
-  const pendingAlertCount =
-    userType === "hospital"
-      ? hospitalAlerts?.filter((alert) => alert.status === "sent").length || 0
-      : 0;
+
+  // For hospital users: poll for new alerts and show popup/play sound
+  useEffect(() => {
+    if (userType !== "hospital" || !hospitalAlerts) return;
+
+    // We only care about alerts with status "sent" (unread/new)
+    const activeAlerts = hospitalAlerts.filter(a => a.status === "sent");
+    if (activeAlerts.length === 0) return;
+
+    // Track the latest alert ID internally to avoid duplicate notifications on every poll
+    const latestAlertId = Math.max(...activeAlerts.map(a => a.alert_id));
+    const lastNotifiedId = Number(localStorage.getItem("last_notified_alert_id") || "0");
+
+    if (latestAlertId > lastNotifiedId) {
+      const latestAlert = activeAlerts.find(a => a.alert_id === latestAlertId);
+      if (latestAlert) {
+        // Play alert sound
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+        audio.play().catch(e => console.warn("Failed to play alert sound:", e));
+
+        toast.error(`Emergency Alert: ${latestAlert.patient.full_name}`, {
+          description: latestAlert.alert_message || "A new emergency alert has been received.",
+          duration: 10000,
+          action: {
+            label: "View Alerts",
+            onClick: () => navigate("/hospital/alerts"),
+          },
+        });
+
+        localStorage.setItem("last_notified_alert_id", latestAlertId.toString());
+      }
+    }
+  }, [hospitalAlerts, navigate, userType]);
 
   const navItems = userType === "patient" ? patientNavItems : hospitalNavItems;
   const userName = userType === "patient"
@@ -122,13 +150,6 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
             <Icon className="h-5 w-5" />
             <span className="flex items-center gap-2">
               {item.label}
-              {userType === "hospital" &&
-                item.href === "/hospital/alerts" &&
-                pendingAlertCount > 0 && (
-                  <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground">
-                    {pendingAlertCount}
-                  </span>
-                )}
             </span>
           </Link>
         );
@@ -198,17 +219,6 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
             {/* Profile Switcher - Only for patient users */}
             {userType === "patient" && <ProfileSwitcher />}
 
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {pendingAlertCount > 0 ? (
-                <span className="absolute -top-1 -right-1 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground">
-                  {pendingAlertCount}
-                </span>
-              ) : (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
-              )}
-            </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2">
@@ -227,10 +237,12 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate(`/${userType}/settings`)}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
+                {userType === "patient" && (
+                  <DropdownMenuItem onClick={() => navigate(`/${userType}/settings`)}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => { logout(); navigate("/login", { replace: true }); }}

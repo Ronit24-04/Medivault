@@ -67,7 +67,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientsRoutes);
 app.use('/api/patients', recordsRoutes);
 app.use('/api/patients', sharedAccessRoutes);
-app.use('/api/patients', emergencyAlertRoutes);
+app.use('/api/emergency-alerts', emergencyAlertRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/hospitals', hospitalsRoutes);
 app.use('/api/hospital', hospitalAdminRoutes);

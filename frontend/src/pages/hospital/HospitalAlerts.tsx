@@ -201,9 +201,17 @@ export default function HospitalAlerts() {
                           )}
                         </div>
 
-                        <p className="text-sm text-foreground mb-2">
-                          {alert.alert_message || alert.critical_summary || "Emergency alert triggered."}
+                        <p className="text-sm font-bold text-destructive mb-1">
+                          {alert.alert_message || "EMERGENCY ALERT"}
                         </p>
+                        {alert.critical_summary && (
+                          <div className="bg-destructive/10 p-2 rounded border border-destructive/20 mb-2">
+                            <p className="text-xs font-black text-destructive uppercase tracking-widest mb-1">Critical Medical Info</p>
+                            <p className="text-sm font-medium text-destructive-foreground">
+                              {alert.critical_summary}
+                            </p>
+                          </div>
+                        )}
 
                         {alert.patient_location && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">

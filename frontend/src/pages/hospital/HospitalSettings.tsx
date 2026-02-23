@@ -78,7 +78,7 @@ export default function HospitalSettings() {
 
         setAddress(
           data?.display_name ||
-            [addressData.house_number, addressData.road].filter(Boolean).join(" ")
+          [addressData.house_number, addressData.road].filter(Boolean).join(" ")
         );
         setCity(addressData.city || addressData.town || addressData.village || city);
         setStateVal(addressData.state || stateVal);
@@ -172,7 +172,7 @@ export default function HospitalSettings() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Settings</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Profile</h1>
             <p className="text-muted-foreground">
               {hospitalProfile
                 ? "Update your hospital profile and preferences."

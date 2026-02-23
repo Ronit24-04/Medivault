@@ -35,4 +35,9 @@ router.delete(
     sharedAccessController.revokeShare.bind(sharedAccessController)
 );
 
+router.get(
+    '/:patientId/shared-access/:shareId/files',
+    sharedAccessController.getSharedFiles.bind(sharedAccessController)
+);
+
 export default router;

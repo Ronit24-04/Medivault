@@ -60,10 +60,12 @@ export const useUpdateSharedRecordStatus = () => {
         mutationFn: ({
             shareId,
             status,
+            notes,
         }: {
             shareId: number;
             status: SharedRecordDecision;
-        }) => hospitalAdminService.updateSharedRecordStatus(shareId, status),
+            notes?: string;
+        }) => hospitalAdminService.updateSharedRecordStatus(shareId, status, notes),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['hospital-shared-records'] });
             toast.success('Status updated successfully!');
@@ -91,7 +93,8 @@ export const useAcknowledgeHospitalAlert = () => {
 export const useAcceptShare = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (shareId: number) => hospitalAdminService.acceptShare(shareId),
+        mutationFn: ({ shareId, notes }: { shareId: number; notes?: string }) =>
+            hospitalAdminService.acceptShare(shareId, notes),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['hospital-shared-records'] });
             toast.success('Access request accepted!');
@@ -105,7 +108,8 @@ export const useAcceptShare = () => {
 export const useRejectShare = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (shareId: number) => hospitalAdminService.rejectShare(shareId),
+        mutationFn: ({ shareId, notes }: { shareId: number; notes?: string }) =>
+            hospitalAdminService.rejectShare(shareId, notes),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['hospital-shared-records'] });
             toast.success('Access request rejected.');

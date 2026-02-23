@@ -39,6 +39,10 @@ model Patient {
   is_primary        Boolean            @default(true)
   created_at        DateTime           @default(now()) @db.Timestamp(0)
   updated_at        DateTime           @default(now()) @updatedAt @db.Timestamp(0)
+  emergencies_count Int                @default(0)
+  allergies         String?            @db.Text
+  chronic_conditions String?           @db.Text
+  current_medications String?          @db.Text
   height_cm         Decimal?           @db.Decimal(5, 2)
   patient_id        Int                @id @default(autoincrement())
   weight_kg         Decimal?           @db.Decimal(5, 2)
@@ -108,9 +112,11 @@ model SharedAccess {
   expires_on             DateTime?         @db.Timestamp(0)
   status                 String            @default("active") @db.VarChar(20)
   records_accessed_count Int               @default(0)
-  shared_record_ids      String?           @db.Text
   created_at             DateTime          @default(now()) @db.Timestamp(0)
   updated_at             DateTime          @default(now()) @updatedAt @db.Timestamp(0)
+  shared_record_ids      String?           @db.Text
+  hospital_notes         String?           @db.Text
+  priority               String?           @db.VarChar(20)
   emergencyContact       EmergencyContact? @relation(fields: [contact_id], references: [contact_id])
   hospital               Hospital?         @relation(fields: [hospital_id], references: [hospital_id])
   patient                Patient           @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)

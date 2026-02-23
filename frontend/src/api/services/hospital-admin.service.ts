@@ -11,6 +11,8 @@ export interface HospitalSharedRecord {
     expires_on?: string;
     status: string;
     records_accessed_count: number;
+    priority?: string;
+    hospital_notes?: string;
     patient: {
         patient_id: number;
         full_name: string;
@@ -89,12 +91,13 @@ export const hospitalAdminService = {
 
     async updateSharedRecordStatus(
         shareId: number,
-        status: SharedRecordDecision
+        status: SharedRecordDecision,
+        notes?: string
     ): Promise<HospitalSharedRecord> {
         try {
             const response = await apiClient.post<ApiResponse<HospitalSharedRecord>>(
                 `/hospital/shared-records/${shareId}/status`,
-                { status }
+                { status, notes }
             );
             return response.data.data!;
         } catch (error) {
@@ -131,18 +134,24 @@ export const hospitalAdminService = {
         }
     },
 
-    async acceptShare(shareId: number): Promise<HospitalSharedRecord> {
+    async acceptShare(shareId: number, notes?: string): Promise<HospitalSharedRecord> {
         try {
-            const response = await apiClient.post<ApiResponse<HospitalSharedRecord>>(`/hospital/shared-records/${shareId}/accept`);
+            const response = await apiClient.post<ApiResponse<HospitalSharedRecord>>(
+                `/hospital/shared-records/${shareId}/accept`,
+                { notes }
+            );
             return response.data.data!;
         } catch (error) {
             throw new Error(handleApiError(error));
         }
     },
 
-    async rejectShare(shareId: number): Promise<HospitalSharedRecord> {
+    async rejectShare(shareId: number, notes?: string): Promise<HospitalSharedRecord> {
         try {
-            const response = await apiClient.post<ApiResponse<HospitalSharedRecord>>(`/hospital/shared-records/${shareId}/reject`);
+            const response = await apiClient.post<ApiResponse<HospitalSharedRecord>>(
+                `/hospital/shared-records/${shareId}/reject`,
+                { notes }
+            );
             return response.data.data!;
         } catch (error) {
             throw new Error(handleApiError(error));

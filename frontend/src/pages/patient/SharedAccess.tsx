@@ -65,6 +65,7 @@ import {
   useSharedAccessStats,
   useRevokeShare,
   useCreateShare,
+  useSharedFiles,
 } from "@/hooks/useSharedAccess";
 import { SharedAccess as SharedAccessType } from "@/api/services";
 import { sharedAccessService } from "@/api/services/shared-access.service";
@@ -113,6 +114,23 @@ const DURATION_OPTIONS = [
   { value: "0", label: "No expiry" },
 ];
 
+const PRIORITY_OPTIONS = [
+  { value: "low", label: "Low", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  { value: "medium", label: "Medium", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+  { value: "high", label: "High", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  { value: "emergency", label: "Emergency", color: "bg-red-100 text-red-700 border-red-200 animate-pulse" },
+];
+
+const getPriorityBadge = (priority?: string) => {
+  if (!priority) return null;
+  const option = PRIORITY_OPTIONS.find((o) => o.value === priority);
+  return (
+    <Badge className={`${option?.color || "bg-muted text-muted-foreground"} border font-medium`}>
+      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+    </Badge>
+  );
+};
+
 function ShareDialog({ patientId }: { patientId: number }) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,6 +140,7 @@ function ShareDialog({ patientId }: { patientId: number }) {
   const [isSearching, setIsSearching] = useState(false);
   const [accessLevel, setAccessLevel] = useState("");
   const [duration, setDuration] = useState("");
+  const [priority, setPriority] = useState("medium");
   const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
   const { data: records, isLoading: recordsLoading } = useRecords(patientId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,6 +217,7 @@ function ShareDialog({ patientId }: { patientId: number }) {
           accessLevel,
           expiresOn: computeExpiresOn(),
           sharedRecordIds,
+          priority,
         },
       },
       {
@@ -207,6 +227,7 @@ function ShareDialog({ patientId }: { patientId: number }) {
           setSelectedHospital(null);
           setAccessLevel("");
           setDuration("");
+          setPriority("medium");
           setSelectedRecordIds([]);
         },
       }
@@ -346,18 +367,33 @@ function ShareDialog({ patientId }: { patientId: number }) {
           )}
 
           {/* Duration */}
-          <div className="space-y-2">
-            <Label>Access Duration</Label>
-            <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select duration" />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATION_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Access Duration</Label>
+              <Select value={duration} onValueChange={setDuration}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DURATION_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORITY_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Info note */}
@@ -392,6 +428,7 @@ export default function SharedAccess() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [viewFilesOpen, setViewFilesOpen] = useState(false);
   const [selectedShare, setSelectedShare] = useState<SharedAccessType | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -431,6 +468,11 @@ export default function SharedAccess() {
   const handleRevokeAccess = (shareId: number) => {
     if (!patientId) return;
     revokeShareMutation.mutate({ patientId, shareId });
+  };
+
+  const handleViewFiles = (share: SharedAccessType) => {
+    setSelectedShare(share);
+    setViewFilesOpen(true);
   };
 
   const statsData = [
@@ -548,6 +590,7 @@ export default function SharedAccess() {
                   <TableRow>
                     <TableHead>Provider</TableHead>
                     <TableHead className="hidden sm:table-cell">Access Level</TableHead>
+                    <TableHead>Priority</TableHead>
                     <TableHead className="hidden md:table-cell">Records Accessed</TableHead>
                     <TableHead className="hidden lg:table-cell">Expires</TableHead>
                     <TableHead>Status</TableHead>
@@ -572,12 +615,23 @@ export default function SharedAccess() {
                           </Avatar>
                           <div>
                             <p className="font-medium">{share.provider_name}</p>
-                            <p className="text-sm text-muted-foreground">{share.provider_type}</p>
+                            <div className="flex flex-col gap-0.5">
+                              <p className="text-sm text-muted-foreground">{share.provider_type}</p>
+                              {share.hospital_notes && (
+                                <div className="flex items-start gap-1 text-[11px] bg-accent/50 text-muted-foreground px-1.5 py-0.5 rounded border border-border mt-1">
+                                  <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                  <span className="italic line-clamp-1">{share.hospital_notes}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge variant="outline">{share.access_level}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {getPriorityBadge(share.priority)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         {share.records_accessed_count} records
@@ -588,12 +642,6 @@ export default function SharedAccess() {
                       <TableCell>{getStatusBadge(share.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex">
-                            <Settings className="h-4 w-4" />
-                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon-sm">
@@ -601,17 +649,13 @@ export default function SharedAccess() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewFiles(share)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Shared Files
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleShowQR(share)}>
                                 <QrCode className="mr-2 h-4 w-4" />
                                 Show QR Code
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Settings className="mr-2 h-4 w-4" />
-                                Edit Access
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
@@ -663,55 +707,131 @@ export default function SharedAccess() {
 
         {/* QR code dialog */}
         <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-sm">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <QrCode className="h-5 w-5" />
-                Share Access via QR Code
-              </DialogTitle>
+              <DialogTitle>Share Access</DialogTitle>
               <DialogDescription>
-                {selectedShare && `Share your ${selectedShare.access_level.toLowerCase()} with ${selectedShare.provider_name}`}
+                Scan this QR code to quickly grant access or copy the link below.
               </DialogDescription>
             </DialogHeader>
-            {selectedShare && (
-              <div className="space-y-4">
-                <div className="flex justify-center">
+            <div className="flex flex-col items-center justify-center space-y-6 py-4">
+              <div className="p-4 bg-white rounded-xl shadow-sm border border-border">
+                {selectedShare && (
                   <QRCodeDisplay
                     value={generateShareUrl(selectedShare.share_id)}
-                    title=""
-                    description=""
-                    size={180}
+                    size={200}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>Share Link</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      readOnly
-                      value={generateShareUrl(selectedShare.share_id)}
-                      className="text-sm"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handleCopyLink}
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4 text-success" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                <div className="text-sm text-muted-foreground text-center">
-                  <p>Access expires: {formatDate(selectedShare.expires_on)}</p>
+                )}
+              </div>
+              <div className="w-full space-y-2">
+                <Label className="text-xs text-muted-foreground">Share Link</Label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={selectedShare ? generateShareUrl(selectedShare.share_id) : ""}
+                    className="flex-1 bg-muted/50 text-xs"
+                  />
+                  <Button size="icon" variant="outline" onClick={handleCopyLink}>
+                    {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
-            )}
+            </div>
           </DialogContent>
         </Dialog>
+
+        {/* View Files Dialog */}
+        <ViewFilesDialog
+          patientId={patientId || 0}
+          share={selectedShare}
+          open={viewFilesOpen}
+          onOpenChange={setViewFilesOpen}
+        />
       </div>
     </DashboardLayout>
+  );
+}
+
+function ViewFilesDialog({ patientId, share, open, onOpenChange }: {
+  patientId: number;
+  share: SharedAccessType | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { data: files, isLoading } = useSharedFiles(patientId, share?.share_id ?? null);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Files Shared with {share?.provider_name}</DialogTitle>
+          <DialogDescription>
+            You have granted {share?.access_level.toLowerCase()} access to the following files.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div className="bg-muted/50 p-2 rounded border border-border/50">
+              <p className="text-muted-foreground mb-0.5 font-medium uppercase tracking-wider">Status</p>
+              {share && getStatusBadge(share.status)}
+            </div>
+            <div className="bg-muted/50 p-2 rounded border border-border/50">
+              <p className="text-muted-foreground mb-0.5 font-medium uppercase tracking-wider">Priority</p>
+              {share && getPriorityBadge(share.priority)}
+            </div>
+          </div>
+
+          {share?.hospital_notes && (
+            <div className="bg-accent/30 p-3 rounded-md border border-border text-sm italic">
+              <p className="text-xs text-muted-foreground non-italic mb-1 font-semibold flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Hospital Feedback:
+              </p>
+              "{share.hospital_notes}"
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Shared Documents
+            </h4>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : files && files.length > 0 ? (
+              <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                {files.map((file: any) => (
+                  <div key={file.record_id} className="flex items-center justify-between p-2.5 rounded-lg bg-accent/30 border border-border/50 text-sm hover:bg-accent/50 transition-colors">
+                    <div className="min-w-0 flex-1 mr-2">
+                      <p className="font-medium truncate">{file.title}</p>
+                      <p className="text-xs text-muted-foreground">{file.category} • {formatDate(file.record_date)}</p>
+                    </div>
+                    <Button variant="ghost" size="icon-sm" asChild>
+                      <a href={file.file_path} target="_blank" rel="noopener noreferrer">
+                        <Eye className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
+                <p className="text-sm text-muted-foreground">No specific files match this access level.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+            Close
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

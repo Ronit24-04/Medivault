@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,6 +38,7 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
+  AlertCircle,
 } from "lucide-react";
 import {
   useHospitalSharedRecords,
@@ -74,6 +76,21 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+const getPriorityBadge = (priority?: string) => {
+  switch (priority) {
+    case "low":
+      return <Badge className="bg-blue-100 text-blue-700 border-blue-200">Low</Badge>;
+    case "medium":
+      return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Medium</Badge>;
+    case "high":
+      return <Badge className="bg-orange-100 text-orange-700 border-orange-200">High</Badge>;
+    case "emergency":
+      return <Badge className="bg-red-100 text-red-700 border-red-200 animate-pulse">Emergency</Badge>;
+    default:
+      return null;
+  }
+};
+
 export default function HospitalDocuments() {
   const { data: sharedRecords, isLoading } = useHospitalSharedRecords();
   const { mutate: acceptShare, isPending: isAccepting } = useAcceptShare();
@@ -84,6 +101,8 @@ export default function HospitalDocuments() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewDoc, setViewDoc] = useState<HospitalSharedRecord | null>(null);
   const [actioningShareId, setActioningShareId] = useState<number | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ id: number, type: 'accept' | 'reject' } | null>(null);
+  const [feedbackNote, setFeedbackNote] = useState("");
   const { data: files, isLoading: filesLoading } = useSharedRecordFiles(viewDoc?.share_id ?? null);
 
   const filtered = (sharedRecords ?? []).filter((doc) => {
@@ -101,25 +120,37 @@ export default function HospitalDocuments() {
     toast.info(`Requesting records access for ${doc.patient.full_name}.`);
   };
 
+  const handleConfirmAction = () => {
+    if (!pendingAction) return;
+    const { id, type } = pendingAction;
+    setActioningShareId(id);
+    const options = {
+      onSettled: () => {
+        setActioningShareId(null);
+        setPendingAction(null);
+        setFeedbackNote("");
+      }
+    };
+
+    if (type === 'accept') {
+      acceptShare({ shareId: id, notes: feedbackNote }, options);
+    } else {
+      rejectShare({ shareId: id, notes: feedbackNote }, options);
+    }
+  };
+
   const handleAccept = (shareId: number) => {
-    setActioningShareId(shareId);
-    acceptShare(shareId, { onSettled: () => setActioningShareId(null) });
+    setPendingAction({ id: shareId, type: 'accept' });
+    setFeedbackNote("");
   };
 
   const handleReject = (shareId: number) => {
-    setActioningShareId(shareId);
-    rejectShare(shareId, { onSettled: () => setActioningShareId(null) });
+    setPendingAction({ id: shareId, type: 'reject' });
+    setFeedbackNote("");
   };
 
-  const handleDownloadFile = (file: any) => {
-    const a = document.createElement("a");
-    a.href = file.file_path;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.download = file.title;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleViewFile = (file: any) => {
+    window.open(file.file_path, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -191,6 +222,7 @@ export default function HospitalDocuments() {
                       <TableHead>Patient</TableHead>
                       <TableHead>Provider</TableHead>
                       <TableHead className="hidden md:table-cell">Access Level</TableHead>
+                      <TableHead>Priority</TableHead>
                       <TableHead className="hidden lg:table-cell">Shared Date</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -224,6 +256,9 @@ export default function HospitalDocuments() {
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
                             <span className="text-sm">{doc.access_level}</span>
+                          </TableCell>
+                          <TableCell>
+                            {getPriorityBadge(doc.priority)}
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             <div className="flex items-center gap-2">
@@ -277,14 +312,18 @@ export default function HospitalDocuments() {
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    title="Download"
-                                    onClick={() => handleDownload(doc)}
-                                  >
-                                    <Download className="h-4 w-4" />
-                                  </Button>
+                                  {doc.status === "active" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      title="Revoke Access"
+                                      disabled={isActioning || isAccepting || isRejecting}
+                                      onClick={() => handleReject(doc.share_id)}
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -356,6 +395,16 @@ export default function HospitalDocuments() {
                 <p className="text-sm font-medium">{viewDoc.records_accessed_count}</p>
               </div>
 
+              {viewDoc.hospital_notes && (
+                <div className="bg-accent/50 p-3 rounded-md border border-border">
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Review Feedback
+                  </p>
+                  <p className="text-sm italic">"{viewDoc.hospital_notes}"</p>
+                </div>
+              )}
+
               <div className="border-t pt-4">
                 <p className="text-sm font-semibold mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4" />
@@ -379,10 +428,10 @@ export default function HospitalDocuments() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => handleDownloadFile(file)}
-                          title="Download"
+                          onClick={() => handleViewFile(file)}
+                          title="View"
                         >
-                          <Download className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
@@ -399,6 +448,45 @@ export default function HospitalDocuments() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation/Feedback Dialog */}
+      <Dialog open={!!pendingAction} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{pendingAction?.type === 'accept' ? 'Accept Access Request' : 'Reject Access Request'}</DialogTitle>
+            <DialogDescription>
+              {pendingAction?.type === 'accept'
+                ? 'You are about to accept access to this patient\'s records. You can provide optional feedback or notes below.'
+                : 'Please provide a reason for rejecting this access request.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Feedback Notes (Optional for accept)</Label>
+              <Input
+                placeholder="Enter feedback or rejection reason..."
+                value={feedbackNote}
+                onChange={(e) => setFeedbackNote(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setPendingAction(null)} disabled={isAccepting || isRejecting}>
+              Cancel
+            </Button>
+            <Button
+              variant={pendingAction?.type === 'accept' ? 'default' : 'destructive'}
+              onClick={handleConfirmAction}
+              disabled={isAccepting || isRejecting || (pendingAction?.type === 'reject' && !feedbackNote)}
+            >
+              {(isAccepting || isRejecting) ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Confirm {pendingAction?.type === 'accept' ? 'Accept' : 'Reject'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

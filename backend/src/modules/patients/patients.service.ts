@@ -35,6 +35,9 @@ export class PatientsService {
                 date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : new Date('2000-01-01'),
                 gender: data.gender || 'Other',
                 blood_type: data.bloodType,
+                allergies: data.allergies,
+                chronic_conditions: data.chronicConditions,
+                current_medications: data.currentMedications,
                 height_cm: data.height,
                 weight_kg: data.weight,
                 relationship: data.relationship,
@@ -115,6 +118,9 @@ export class PatientsService {
                 date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
                 gender: data.gender,
                 blood_type: data.bloodType,
+                allergies: data.allergies,
+                chronic_conditions: data.chronicConditions,
+                current_medications: data.currentMedications,
                 height_cm: data.height,
                 weight_kg: data.weight,
                 relationship: data.relationship,
@@ -214,6 +220,35 @@ export class PatientsService {
         }
 
         return { message: 'PIN verified' };
+    }
+
+    async getPublicEmergencyInfo(email: string) {
+        const admin = await prisma.admin.findFirst({
+            where: { email, user_type: 'patient' },
+            select: { admin_id: true }
+        });
+
+        if (!admin) {
+            throw new AppError(404, 'No account found with this email');
+        }
+
+        const patient = await prisma.patient.findFirst({
+            where: { admin_id: admin.admin_id },
+            orderBy: [{ is_primary: 'desc' }, { created_at: 'asc' }],
+            select: {
+                full_name: true,
+                blood_type: true,
+                allergies: true,
+                chronic_conditions: true,
+                date_of_birth: true,
+            }
+        });
+
+        if (!patient) {
+            throw new AppError(404, 'No patient profile found for this account');
+        }
+
+        return patient;
     }
 }
 

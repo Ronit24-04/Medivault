@@ -58,7 +58,7 @@ export class HospitalAdminController {
         try {
             const adminId = req.admin!.adminId;
             const shareId = parseInt((req.params as any).shareId, 10);
-            const { status } = req.body;
+            const { status, notes } = req.body;
 
             if (status !== 'acknowledged' && status !== 'rejected' && status !== 'active') {
                 res.status(400).json({
@@ -68,7 +68,7 @@ export class HospitalAdminController {
                 return;
             }
 
-            const updated = await hospitalAdminService.updateSharedRecordStatus(adminId, shareId, status);
+            const updated = await hospitalAdminService.updateSharedRecordStatus(adminId, shareId, status, notes);
             res.json({ success: true, data: updated });
         } catch (error) {
             next(error);
@@ -90,7 +90,8 @@ export class HospitalAdminController {
         try {
             const adminId = req.admin!.adminId;
             const shareId = parseInt((req.params as any).shareId, 10);
-            const share = await hospitalAdminService.acceptShare(adminId, shareId);
+            const { notes } = req.body;
+            const share = await hospitalAdminService.acceptShare(adminId, shareId, notes);
             res.json({ success: true, message: 'Access request accepted', data: share });
         } catch (error) {
             next(error);
@@ -101,7 +102,8 @@ export class HospitalAdminController {
         try {
             const adminId = req.admin!.adminId;
             const shareId = parseInt((req.params as any).shareId, 10);
-            const share = await hospitalAdminService.rejectShare(adminId, shareId);
+            const { notes } = req.body;
+            const share = await hospitalAdminService.rejectShare(adminId, shareId, notes);
             res.json({ success: true, message: 'Access request rejected', data: share });
         } catch (error) {
             next(error);

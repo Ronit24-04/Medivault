@@ -54,6 +54,21 @@ const formatDate = (dateString?: string) => {
   }
 };
 
+const getPriorityBadge = (priority?: string) => {
+  switch (priority) {
+    case "low":
+      return <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100/80">Low</Badge>;
+    case "medium":
+      return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-100/80">Medium</Badge>;
+    case "high":
+      return <Badge className="bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100/80">High</Badge>;
+    case "emergency":
+      return <Badge className="bg-red-100 text-red-700 border-red-200 animate-pulse hover:bg-red-100/80">Emergency</Badge>;
+    default:
+      return <Badge variant="secondary">{priority || "Normal"}</Badge>;
+  }
+};
+
 type LocalStatus = "pending" | "acknowledged" | "rejected";
 type AckItem = HospitalSharedRecord & { localStatus: LocalStatus };
 
@@ -88,9 +103,7 @@ export default function HospitalAcknowledgements() {
     const matchesStatus =
       statusFilter === "all" || item.localStatus === statusFilter;
     const matchesPriority =
-      priorityFilter === "all" ||
-      (priorityFilter === "high" && item.status === "active") ||
-      (priorityFilter === "normal" && item.status !== "active");
+      priorityFilter === "all" || item.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
@@ -213,8 +226,10 @@ export default function HospitalAcknowledgements() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Priority</SelectItem>
-                  <SelectItem value="high">Active Access</SelectItem>
-                  <SelectItem value="normal">Other</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="emergency">Emergency</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -268,9 +283,7 @@ export default function HospitalAcknowledgements() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={item.status === "active" ? "destructive" : "secondary"}>
-                            {item.status === "active" ? "High" : "Normal"}
-                          </Badge>
+                          {getPriorityBadge(item.priority)}
                         </TableCell>
                         <TableCell>{getStatusBadge(item.localStatus)}</TableCell>
                         <TableCell className="text-right">

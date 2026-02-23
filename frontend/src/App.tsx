@@ -15,7 +15,6 @@ import UploadRecord from "./pages/patient/UploadRecord";
 import SharedAccess from "./pages/patient/SharedAccess";
 import PatientProfile from "./pages/patient/PatientProfile";
 import PatientSettings from "./pages/patient/PatientSettings";
-import PatientUnlock from "./pages/patient/PatientUnlock";
 import HospitalDashboard from "./pages/hospital/HospitalDashboard";
 import HospitalDocuments from "./pages/hospital/HospitalDocuments";
 import HospitalAcknowledgements from "./pages/hospital/HospitalAcknowledgements";
@@ -29,8 +28,8 @@ const PatientLockGuard = () => {
   const isLocked = useProfileStore((state) => state.isLocked);
   const location = useLocation();
 
-  if (isLocked && location.pathname !== "/patient/unlock") {
-    return <Navigate to="/patient/unlock" replace />;
+  if (isLocked) {
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;
@@ -49,7 +48,6 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
-          <Route path="/patient/unlock" element={<PatientUnlock />} />
           <Route element={<PatientLockGuard />}>
             {/* Patient Routes */}
             <Route path="/patient/dashboard" element={<PatientDashboard />} />

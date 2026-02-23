@@ -79,10 +79,6 @@ export default apiClient;
 
 // Helper function to handle API errors
 export const handleApiError = (error: unknown): string => {
-    if (error instanceof Error && error.message) {
-        return error.message;
-    }
-
     if (axios.isAxiosError(error)) {
         const apiError = error as AxiosError<ApiResponse>;
 
@@ -97,6 +93,10 @@ export const handleApiError = (error: unknown): string => {
         if (apiError.message) {
             return apiError.message;
         }
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
     }
 
     return 'An unexpected error occurred';

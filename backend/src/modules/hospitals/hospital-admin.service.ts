@@ -107,7 +107,7 @@ export class HospitalAdminService {
         });
     }
 
-    async updateSharedRecordStatus(adminId: number, shareId: number, status: SharedRecordStatus) {
+    async updateSharedRecordStatus(adminId: number, shareId: number, status: SharedRecordStatus, notes?: string) {
         const hospital = await this.getHospitalByAdminId(adminId);
         if (!hospital) throw new AppError(404, 'Hospital profile not found');
 
@@ -124,7 +124,10 @@ export class HospitalAdminService {
 
         return prisma.sharedAccess.update({
             where: { share_id: shareId },
-            data: { status },
+            data: {
+                status,
+                hospital_notes: notes
+            },
         });
     }
 
@@ -268,7 +271,7 @@ export class HospitalAdminService {
         });
     }
 
-    async acceptShare(adminId: number, shareId: number) {
+    async acceptShare(adminId: number, shareId: number, notes?: string) {
         const hospital = await this.getHospitalByAdminId(adminId);
         if (!hospital) throw new AppError(404, 'Hospital profile not found');
 
@@ -283,7 +286,10 @@ export class HospitalAdminService {
 
         return prisma.sharedAccess.update({
             where: { share_id: shareId },
-            data: { status: 'active' },
+            data: {
+                status: 'active',
+                hospital_notes: notes
+            },
             include: {
                 patient: {
                     select: { patient_id: true, full_name: true, date_of_birth: true, gender: true },
@@ -292,7 +298,7 @@ export class HospitalAdminService {
         });
     }
 
-    async rejectShare(adminId: number, shareId: number) {
+    async rejectShare(adminId: number, shareId: number, notes?: string) {
         const hospital = await this.getHospitalByAdminId(adminId);
         if (!hospital) throw new AppError(404, 'Hospital profile not found');
 
@@ -307,7 +313,10 @@ export class HospitalAdminService {
 
         return prisma.sharedAccess.update({
             where: { share_id: shareId },
-            data: { status: 'rejected' },
+            data: {
+                status: 'rejected',
+                hospital_notes: notes
+            },
             include: {
                 patient: {
                     select: { patient_id: true, full_name: true, date_of_birth: true, gender: true },

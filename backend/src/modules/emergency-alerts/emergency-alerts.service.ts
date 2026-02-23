@@ -64,6 +64,7 @@ export class EmergencyAlertsService {
             where: {
                 latitude: { not: null },
                 longitude: { not: null },
+                is_verified: true,
             },
             select: {
                 hospital_id: true,
@@ -125,6 +126,44 @@ export class EmergencyAlertsService {
             fromPhoneNumber.includes('XXXXXXXX');
 
         const nearestHospitalId = await this.getNearestHospitalId(location);
+        let hospitalDetails = null;
+        if (nearestHospitalId) {
+            const h = await prisma.hospital.findUnique({
+                where: { hospital_id: nearestHospitalId },
+                select: {
+                    hospital_name: true,
+                    address: true,
+                    phone_number: true,
+                    city: true,
+                    state: true
+                }
+            });
+            if (h) {
+                hospitalDetails = {
+                    name: h.hospital_name,
+                    address: h.address,
+                    phone: h.phone_number,
+                    city: h.city,
+                    state: h.state
+                };
+            }
+        }
+
+        const patient = await prisma.patient.findUnique({
+            where: { patient_id: patientId },
+            select: {
+                full_name: true,
+                blood_type: true,
+                allergies: true,
+                chronic_conditions: true
+            }
+        });
+
+        const criticalSummary = patient ? [
+            patient.blood_type ? `Blood: ${patient.blood_type}` : null,
+            patient.allergies ? `Allergies: ${patient.allergies}` : null,
+            patient.chronic_conditions ? `Conditions: ${patient.chronic_conditions}` : null
+        ].filter(Boolean).join(' | ') : null;
 
         const alert = await prisma.emergencyAlert.create({
             data: {
@@ -135,16 +174,27 @@ export class EmergencyAlertsService {
                         ? `${location.latitude},${location.longitude}`
                         : null,
                 alert_message: '🚨 EMERGENCY ALERT FROM MEDIVAULT',
+                critical_summary: criticalSummary,
                 status: 'sent',
                 sent_to_hospital: nearestHospitalId ? (true as any) : (false as any),
                 sent_to_contacts: false as any,
                 sent_at: new Date(),
             },
+            include: {
+                patient: {
+                    select: {
+                        full_name: true,
+                        blood_type: true,
+                        allergies: true,
+                        chronic_conditions: true
+                    }
+                }
+            }
         });
 
         if (hasPlaceholderConfig) {
             console.warn('Emergency SMS skipped: Twilio is not configured');
-            return alert;
+            return { ...alert, hospital_details: hospitalDetails };
         }
 
         let twilioClientFactory: any;
@@ -152,7 +202,7 @@ export class EmergencyAlertsService {
             twilioClientFactory = require('twilio');
         } catch (error) {
             console.warn('Emergency SMS skipped: Twilio SDK is not installed');
-            return alert;
+            return { ...alert, hospital_details: hospitalDetails };
         }
 
         const client: any = twilioClientFactory(accountSid, authToken);
@@ -163,9 +213,9 @@ export class EmergencyAlertsService {
                 to: this.normalizePhoneNumber(contact.phone_number),
             }))
             .filter((recipient) => recipient.to !== null) as Array<{
-            contactId: number;
-            to: string;
-        }>;
+                contactId: number;
+                to: string;
+            }>;
 
         if (!recipients.length) {
             throw new AppError(400, 'No valid emergency contact phone numbers found');
@@ -200,7 +250,7 @@ export class EmergencyAlertsService {
             });
         }
 
-        return alert;
+        return { ...alert, hospital_details: hospitalDetails };
     }
 
     async sendEmergencyAlert(adminId: number, patientId: number, location?: EmergencyLocation) {

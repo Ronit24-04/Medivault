@@ -13,6 +13,8 @@ export interface SharedAccess {
     expires_on?: string;
     status: string;
     records_accessed_count: number;
+    priority?: string;
+    hospital_notes?: string;
     created_at: string;
     updated_at: string;
     hospital?: {
@@ -36,6 +38,7 @@ export interface CreateShareRequest {
     accessLevel: string;
     expiresOn?: string;
     sharedRecordIds?: string;
+    priority?: string;
 }
 
 export interface UpdateShareRequest {
@@ -67,8 +70,14 @@ class SharedAccessService {
         return response.data.data;
     }
 
-    async revokeShare(patientId: number, shareId: number): Promise<void> {
-        await apiClient.delete(`/patients/${patientId}/shared-access/${shareId}`);
+    async revokeShare(patientId: number, shareId: number): Promise<{ message: string }> {
+        const response = await apiClient.delete(`/patients/${patientId}/shared-access/${shareId}`);
+        return response.data;
+    }
+
+    async getSharedFiles(patientId: number, shareId: number): Promise<any[]> {
+        const response = await apiClient.get(`/patients/${patientId}/shared-access/${shareId}/files`);
+        return response.data.data;
     }
 
     async getStats(patientId: number): Promise<SharedAccessStats> {

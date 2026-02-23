@@ -12,7 +12,10 @@ import {
 
 const router = Router();
 
-// All routes require authentication
+// Public route for emergency info
+router.get('/public/emergency-info', patientsController.getPublicEmergencyInfo.bind(patientsController));
+
+// All other routes require authentication
 router.use(authenticate);
 
 router.post('/', validate(createPatientSchema), patientsController.createPatient.bind(patientsController));

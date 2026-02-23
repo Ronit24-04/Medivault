@@ -87,34 +87,35 @@ export default function PatientProfile() {
   const setCurrentProfile = useProfileStore((state) => state.setCurrentProfile);
   const currentProfile = useProfileStore((state) => state.currentProfile);
 
-const [firstName, setFirstName] = useState("");
-const [lastName, setLastName] = useState("");
-const [phone, setPhone] = useState("");
-const [bloodGroup, setBloodGroup] = useState("");
-const [allergies, setAllergies] = useState("");
-const [conditions, setConditions] = useState("");
-const [height, setHeight] = useState("");
-const [weight, setWeight] = useState("");
-const [dateOfBirth, setDateOfBirth] = useState("");
-const [gender, setGender] = useState("");
-const [streetAddress, setStreetAddress] = useState("");
-const [city, setCity] = useState("");
-const [state, setState] = useState("");
-const [zipCode, setZipCode] = useState("");
-const [latitude, setLatitude] = useState("");
-const [longitude, setLongitude] = useState("");
-const [isLocatingAddress, setIsLocatingAddress] = useState(false);
-const [profilePin, setProfilePin] = useState("");
-const [emergencyContactsForm, setEmergencyContactsForm] = useState<EmergencyContactForm[]>(
-  Array.from({ length: MAX_EMERGENCY_CONTACTS }, () => ({
-    name: "",
-    relationship: "",
-    phoneNumber: "",
-  }))
-);
-const [isSaving, setIsSaving] = useState(false);
-const [isUploadingProfileImage, setIsUploadingProfileImage] = useState(false);
-const profileImageInputRef = useRef<HTMLInputElement | null>(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [conditions, setConditions] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [medications, setMedications] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [isLocatingAddress, setIsLocatingAddress] = useState(false);
+  const [profilePin, setProfilePin] = useState("");
+  const [emergencyContactsForm, setEmergencyContactsForm] = useState<EmergencyContactForm[]>(
+    Array.from({ length: MAX_EMERGENCY_CONTACTS }, () => ({
+      name: "",
+      relationship: "",
+      phoneNumber: "",
+    }))
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingProfileImage, setIsUploadingProfileImage] = useState(false);
+  const profileImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: contacts = [] } = useEmergencyContacts();
   const createContactMutation = useCreateContact();
@@ -124,47 +125,48 @@ const profileImageInputRef = useRef<HTMLInputElement | null>(null);
   const { data: user, isLoading } = useProfile();
   const memberSince = user?.created_at
     ? new Date(user.created_at).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
     : null;
   useEffect(() => {
-  // FIRST priority → Zustand saved data
-  if (currentProfile) {
-    setFirstName(currentProfile.full_name?.split(" ")[0] || "");
-    setLastName(currentProfile.full_name?.split(" ")[1] || "");
-    setPhone(currentProfile.phone_number || "");
-    setBloodGroup(currentProfile.blood_group || "");
-    setAllergies(currentProfile.allergies || "");
-    setConditions(currentProfile.existing_conditions || "");
-    setHeight(currentProfile.height || "");
-setWeight(currentProfile.weight || "");
-    setDateOfBirth(
-      currentProfile.date_of_birth
-        ? (() => {
+    // FIRST priority → Zustand saved data
+    if (currentProfile) {
+      setFirstName(currentProfile.full_name?.split(" ")[0] || "");
+      setLastName(currentProfile.full_name?.split(" ")[1] || "");
+      setPhone(currentProfile.phone_number || ""); // Note: phone_number might be on admin but currentProfile might have it merged?
+      setBloodGroup(currentProfile.blood_type || "");
+      setAllergies(currentProfile.allergies || "");
+      setConditions(currentProfile.chronic_conditions || "");
+      setHeight(currentProfile.height_cm ? String(currentProfile.height_cm) : "");
+      setWeight(currentProfile.weight_kg ? String(currentProfile.weight_kg) : "");
+      setMedications(currentProfile.current_medications || "");
+      setDateOfBirth(
+        currentProfile.date_of_birth
+          ? (() => {
             const normalizedDob = new Date(currentProfile.date_of_birth)
               .toISOString()
               .slice(0, 10);
             return normalizedDob === "1900-01-01" ? "2000-01-01" : normalizedDob;
           })()
-        : "2000-01-01"
-    );
-    setGender(currentProfile.gender || "");
-    const parsedAddress = parseAddress(currentProfile.address);
-    setStreetAddress(parsedAddress.streetAddress);
-    setCity(parsedAddress.city);
-    setState(parsedAddress.state);
-    setZipCode(parsedAddress.zipCode);
-    setLatitude(parsedAddress.latitude);
-    setLongitude(parsedAddress.longitude);
-  }
-  // fallback → backend user
-  else if (user) {
-    setFirstName(user.email?.split("@")[0] || "");
-    setPhone(user.phone_number || "");
-  }
-}, [user, currentProfile]);
+          : "2000-01-01"
+      );
+      setGender(currentProfile.gender || "");
+      const parsedAddress = parseAddress(currentProfile.address);
+      setStreetAddress(parsedAddress.streetAddress);
+      setCity(parsedAddress.city);
+      setState(parsedAddress.state);
+      setZipCode(parsedAddress.zipCode);
+      setLatitude(parsedAddress.latitude);
+      setLongitude(parsedAddress.longitude);
+    }
+    // fallback → backend user
+    else if (user) {
+      setFirstName(user.email?.split("@")[0] || "");
+      setPhone(user.phone_number || "");
+    }
+  }, [user, currentProfile]);
 
   const patientEmergencyContacts = useMemo(() => {
     if (!currentProfile) return [];
@@ -212,10 +214,13 @@ setWeight(currentProfile.weight || "");
           longitude: longitude ? Number(longitude) : undefined,
         }),
         ...(dateOfBirth && { dateOfBirth }),
-        ...(gender && { gender }),
+        ...(gender && { gender: gender as "male" | "female" | "other" }),
         ...(bloodGroup && { bloodType: bloodGroup }),
         ...(height && { height: Number(height) }),
         ...(weight && { weight: Number(weight) }),
+        allergies: allergies.trim(),
+        chronicConditions: conditions.trim(),
+        currentMedications: medications.trim(),
         ...(profilePin ? { emergencyPin: profilePin } : {}),
       };
 
@@ -287,9 +292,10 @@ setWeight(currentProfile.weight || "");
         gender,
         blood_group: bloodGroup,
         allergies: allergies,
-        existing_conditions: conditions,
-        height: height,
-        weight: weight,
+        chronic_conditions: conditions,
+        height_cm: height,
+        weight_kg: weight,
+        current_medications: medications,
       } as any);
 
       toast.success("Profile updated successfully");
@@ -377,7 +383,7 @@ setWeight(currentProfile.weight || "");
 
         setStreetAddress(
           data?.display_name ||
-            [addressData.house_number, addressData.road].filter(Boolean).join(" ")
+          [addressData.house_number, addressData.road].filter(Boolean).join(" ")
         );
         setCity(addressData.city || addressData.town || addressData.village || "");
         setState(addressData.state || "");
@@ -481,11 +487,11 @@ setWeight(currentProfile.weight || "");
               </div>
               <div className="text-center sm:text-left">
                 <h2 className="text-xl font-semibold">
-  {currentProfile?.full_name || `${firstName} ${lastName}`.trim() || "Patient"}
-</h2>
+                  {currentProfile?.full_name || `${firstName} ${lastName}`.trim() || "Patient"}
+                </h2>
                 <p className="text-muted-foreground">
-  {user?.email}
-</p>
+                  {user?.email}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Member since {memberSince || "N/A"}
                 </p>
@@ -507,18 +513,18 @@ setWeight(currentProfile.weight || "");
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
                 <Input
-  id="firstName"
-  value={firstName || user?.email?.split("@")[0] || ""}
-  onChange={(e) => setFirstName(e.target.value)}
-/>
+                  id="firstName"
+                  value={firstName || user?.email?.split("@")[0] || ""}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
-               <Input
-  id="lastName"
-  value={lastName}
-  onChange={(e) => setLastName(e.target.value)}
-/>
+                <Input
+                  id="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -528,11 +534,11 @@ setWeight(currentProfile.weight || "");
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
-               <Input
-  id="phone"
-  value={phone || user?.phone_number || ""}
-  onChange={(e) => setPhone(e.target.value)}
-/>
+                <Input
+                  id="phone"
+                  value={phone || user?.phone_number || ""}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -593,38 +599,46 @@ setWeight(currentProfile.weight || "");
               <div className="space-y-2">
                 <Label htmlFor="height">Height (cm)</Label>
                 <Input
-  id="height"
-  type="number"
-  value={height}
-  onChange={(e) => setHeight(e.target.value)}
-/>
+                  id="height"
+                  type="number"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                />
 
               </div>
               <div className="space-y-2">
                 <Label htmlFor="weight">Weight (kg)</Label>
-               <Input
-  id="weight"
-  type="number"
-  value={weight}
-  onChange={(e) => setWeight(e.target.value)}
-/>
+                <Input
+                  id="weight"
+                  type="number"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="allergies">Allergies</Label>
-             <Input
-  id="allergies"
-  value={allergies}
-  onChange={(e) => setAllergies(e.target.value)}
-/>
+              <Input
+                id="allergies"
+                value={allergies}
+                onChange={(e) => setAllergies(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="conditions">Existing Conditions</Label>
-<Input
-  id="conditions"
-  value={conditions}
-  onChange={(e) => setConditions(e.target.value)}
-/>
+              <Input
+                id="conditions"
+                value={conditions}
+                onChange={(e) => setConditions(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="medications">Current Medications</Label>
+              <Input
+                id="medications"
+                value={medications}
+                onChange={(e) => setMedications(e.target.value)}
+              />
             </div>
           </CardContent>
         </Card>
@@ -795,15 +809,15 @@ setWeight(currentProfile.weight || "");
         </Card>
 
         {/* save button */}
-       <div className="flex justify-end">
-  <Button
-    size="lg"
-    onClick={handleSaveChanges}
-    disabled={isSaving}
-  >
-    {isSaving ? "Saving..." : "Save Changes"}
-  </Button>
-</div>
+        <div className="flex justify-end">
+          <Button
+            size="lg"
+            onClick={handleSaveChanges}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
       </div>
     </DashboardLayout>
   );

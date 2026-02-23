@@ -19,7 +19,7 @@ export class EmergencyAlertsController {
                 throw new AppError(400, 'Invalid patient ID');
             }
 
-            await emergencyAlertsService.sendEmergencyAlert(req.admin!.adminId, patientId, {
+            const result = await emergencyAlertsService.sendEmergencyAlert(req.admin!.adminId, patientId, {
                 latitude: Number.isFinite(latitude) ? latitude : undefined,
                 longitude: Number.isFinite(longitude) ? longitude : undefined,
             });
@@ -27,6 +27,7 @@ export class EmergencyAlertsController {
             res.status(200).json({
                 success: true,
                 message: 'Emergency SMS sent',
+                data: result
             });
         } catch (error) {
             next(error);
@@ -45,7 +46,7 @@ export class EmergencyAlertsController {
                 throw new AppError(400, 'Email is required');
             }
 
-            await emergencyAlertsService.sendEmergencyAlertByEmail(email, {
+            const result = await emergencyAlertsService.sendEmergencyAlertByEmail(email, {
                 latitude: Number.isFinite(latitude) ? latitude : undefined,
                 longitude: Number.isFinite(longitude) ? longitude : undefined,
             });
@@ -53,6 +54,7 @@ export class EmergencyAlertsController {
             res.status(200).json({
                 success: true,
                 message: 'Emergency SMS sent',
+                data: result
             });
         } catch (error) {
             next(error);

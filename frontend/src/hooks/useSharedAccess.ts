@@ -8,10 +8,16 @@ import {
 } from '../api/services';
 import { toast } from 'sonner';
 
+const sharedAccessKeys = {
+    all: (patientId: number) => ['sharedAccess', patientId] as const,
+    stats: (patientId: number) => ['sharedAccessStats', patientId] as const,
+    files: (patientId: number, shareId: number | null) => ['sharedAccess', patientId, 'files', shareId] as const,
+};
+
 // Get shared access for a patient
 export const useSharedAccess = (patientId: number) => {
     return useQuery({
-        queryKey: ['sharedAccess', patientId],
+        queryKey: sharedAccessKeys.all(patientId),
         queryFn: () => sharedAccessService.getSharedAccess(patientId),
         enabled: !!patientId,
     });
@@ -20,7 +26,7 @@ export const useSharedAccess = (patientId: number) => {
 // Get shared access statistics
 export const useSharedAccessStats = (patientId: number) => {
     return useQuery({
-        queryKey: ['sharedAccessStats', patientId],
+        queryKey: sharedAccessKeys.stats(patientId),
         queryFn: () => sharedAccessService.getStats(patientId),
         enabled: !!patientId,
     });
@@ -34,8 +40,8 @@ export const useCreateShare = () => {
         mutationFn: ({ patientId, data }: { patientId: number; data: CreateShareRequest }) =>
             sharedAccessService.createShare(patientId, data),
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['sharedAccess', variables.patientId] });
-            queryClient.invalidateQueries({ queryKey: ['sharedAccessStats', variables.patientId] });
+            queryClient.invalidateQueries({ queryKey: sharedAccessKeys.all(variables.patientId) });
+            queryClient.invalidateQueries({ queryKey: sharedAccessKeys.stats(variables.patientId) });
             toast.success('Access granted successfully!');
         },
         onError: (error: Error) => {
@@ -59,8 +65,8 @@ export const useUpdateShare = () => {
             data: UpdateShareRequest;
         }) => sharedAccessService.updateShare(patientId, shareId, data),
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['sharedAccess', variables.patientId] });
-            queryClient.invalidateQueries({ queryKey: ['sharedAccessStats', variables.patientId] });
+            queryClient.invalidateQueries({ queryKey: sharedAccessKeys.all(variables.patientId) });
+            queryClient.invalidateQueries({ queryKey: sharedAccessKeys.stats(variables.patientId) });
             toast.success('Access updated successfully!');
         },
         onError: (error: Error) => {
@@ -77,12 +83,20 @@ export const useRevokeShare = () => {
         mutationFn: ({ patientId, shareId }: { patientId: number; shareId: number }) =>
             sharedAccessService.revokeShare(patientId, shareId),
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['sharedAccess', variables.patientId] });
-            queryClient.invalidateQueries({ queryKey: ['sharedAccessStats', variables.patientId] });
+            queryClient.invalidateQueries({ queryKey: sharedAccessKeys.all(variables.patientId) });
+            queryClient.invalidateQueries({ queryKey: sharedAccessKeys.stats(variables.patientId) });
             toast.success('Access revoked successfully!');
         },
         onError: (error: Error) => {
             toast.error(error.message || 'Failed to revoke access');
         },
+    });
+};
+
+export const useSharedFiles = (patientId: number, shareId: number | null) => {
+    return useQuery({
+        queryKey: sharedAccessKeys.files(patientId, shareId),
+        queryFn: () => sharedAccessService.getSharedFiles(patientId, shareId!),
+        enabled: !!patientId && !!shareId,
     });
 };
