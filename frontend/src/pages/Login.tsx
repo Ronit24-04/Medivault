@@ -78,7 +78,7 @@ export default function Login() {
       });
 
       // Play sound
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3");
+      const audio = new Audio("https://raw.githubusercontent.com/jxpsert/hecuremote/master/public/sounds/siren.mp3");
       audio.play().catch(e => console.warn("Failed to play alert sound:", e));
 
       const effectiveEmail = emergencyEmail || localStorage.getItem("emergencyEmail");
