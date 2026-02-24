@@ -15,7 +15,7 @@ export default defineConfig(() => ({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["robots.txt"],
+      includeAssets: ["robots.txt", "placeholder.svg"],
       manifest: {
         name: "mediVault - Secure Medical Records",
         short_name: "mediVault",

@@ -491,8 +491,8 @@ export default function PatientProfile() {
                 <Avatar className="h-24 w-24">
                   <AvatarImage
                     src={
-                      currentProfile?.profile_image
-                        ? `${API_BASE_URL}${currentProfile.profile_image}`
+                      currentProfile?.profile_picture
+                        ? `${API_BASE_URL}${currentProfile.profile_picture}`
                         : "/placeholder.svg"
                     }
                   />
