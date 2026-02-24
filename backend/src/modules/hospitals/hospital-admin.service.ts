@@ -229,7 +229,6 @@ export class HospitalAdminService {
             where: {
                 hospital_id: hospital.hospital_id,
                 sent_to_hospital: true,
-                status: { not: 'acknowledge' },
                 NOT: [
                     { alert_message: { contains: 'record access shared' } },
                     { alert_message: { contains: 'shared access' } },
