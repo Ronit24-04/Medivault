@@ -1,0 +1,27 @@
+# Standard MediVault .gitignore
+
+# Dependencies
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# macOS Junk
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Backend specific
+backend/dist/
+backend/prisma/*.db
+
+# Frontend specific
+frontend/dist/
