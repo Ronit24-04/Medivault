@@ -230,10 +230,16 @@ export default function PatientProfile() {
   }
 
   const handleSaveChanges = async () => {
+    if (isSaving) return;
+
     try {
-      if (!currentProfile?.patient_id) return;
+      if (!currentProfile?.patient_id) {
+        toast.error("Profile ID missing. Please refresh the page.");
+        return;
+      }
 
       setIsSaving(true);
+      toast.info("Saving changes...", { duration: 2000 });
 
       const payload = {
         fullName: `${firstName} ${lastName}`.trim(),
@@ -248,23 +254,25 @@ export default function PatientProfile() {
         ...(dateOfBirth && { dateOfBirth }),
         ...(gender && { gender: gender as "male" | "female" | "other" }),
         ...(bloodGroup && { bloodType: bloodGroup }),
-        ...(height && { height: Number(height) }),
-        ...(weight && { weight: Number(weight) }),
+        ...(height && { height: Number(height) || undefined }),
+        ...(weight && { weight: Number(weight) || undefined }),
         allergies: allergies.trim(),
         chronicConditions: conditions.trim(),
         currentMedications: medications.trim(),
         ...(profilePin ? { emergencyPin: profilePin } : {}),
       };
 
-      if (profilePin && !/^\d{4}$/.test(profilePin)) {
-        throw new Error("Profile PIN must be exactly 4 digits.");
+      if (profilePin && !/^\d{4,6}$/.test(profilePin)) {
+        throw new Error("Profile PIN must be 4 to 6 digits.");
       }
 
-      const updated = await patientsService.updatePatient(
+      // 1. Update main patient record
+      await patientsService.updatePatient(
         currentProfile.patient_id,
         payload
       );
 
+      // 2. Handle emergency contacts
       for (let index = 0; index < MAX_EMERGENCY_CONTACTS; index += 1) {
         const formContact = emergencyContactsForm[index];
         const existingContact = patientEmergencyContacts[index];
@@ -274,10 +282,12 @@ export default function PatientProfile() {
           relationship: formContact.relationship.trim(),
           phoneNumber: formContact.phoneNumber.trim(),
         };
+
         const hasAnyField =
           normalizedContact.name ||
           normalizedContact.relationship ||
           normalizedContact.phoneNumber;
+
         const isComplete =
           normalizedContact.name &&
           normalizedContact.relationship &&
@@ -310,29 +320,13 @@ export default function PatientProfile() {
         }
       }
 
-      setCurrentProfile({
-        ...updated,
-        address: JSON.stringify({
-          streetAddress: streetAddress.trim(),
-          city: city.trim(),
-          state: state.trim(),
-          zipCode: zipCode.trim(),
-          latitude: latitude ? Number(latitude) : undefined,
-          longitude: longitude ? Number(longitude) : undefined,
-        }),
-        date_of_birth: dateOfBirth,
-        gender,
-        blood_group: bloodGroup,
-        allergies: allergies,
-        chronic_conditions: conditions,
-        height_cm: height,
-        weight_kg: weight,
-        current_medications: medications,
-      } as any);
+      // 3. Refresh everything from the server to ensure consistency
+      await loadProfiles();
 
       toast.success("Profile updated successfully");
       setProfilePin("");
     } catch (err) {
+      console.error("Profile save error:", err);
       toast.error(err instanceof Error ? err.message : "Failed to save profile");
     } finally {
       setIsSaving(false);
