@@ -61,6 +61,7 @@ export interface Patient {
     chronic_conditions?: string;
     current_medications?: string;
     relationship?: string;
+    phone_number?: string;
     is_primary: boolean;
     created_at: string;
     updated_at: string;

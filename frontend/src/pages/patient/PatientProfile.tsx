@@ -1,4 +1,5 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { useNavigate } from "react-router-dom";
 import { patientsService } from "@/api/services";
 import apiClient from "@/api/client";
 import { useProfileStore } from "@/stores/useProfileStore";
@@ -84,8 +85,8 @@ const parseAddress = (rawAddress?: string): AddressParts => {
 };
 
 export default function PatientProfile() {
-  const setCurrentProfile = useProfileStore((state) => state.setCurrentProfile);
-  const currentProfile = useProfileStore((state) => state.currentProfile);
+  const navigate = useNavigate();
+  const { currentProfile, loadProfiles, isLoading: profilesLoading, setCurrentProfile } = useProfileStore();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -130,6 +131,13 @@ export default function PatientProfile() {
       year: "numeric",
     })
     : null;
+
+  // Auto-load profiles if currentProfile is missing (e.g., on direct page refresh)
+  useEffect(() => {
+    if (!currentProfile && !profilesLoading) {
+      loadProfiles();
+    }
+  }, [currentProfile, loadProfiles, profilesLoading]);
   useEffect(() => {
     // FIRST priority → Zustand saved data
     if (currentProfile) {
@@ -193,8 +201,32 @@ export default function PatientProfile() {
     setEmergencyContactsForm(nextContacts);
   }, [patientEmergencyContacts]);
 
-  if (isLoading) {
-    return <div>Loading...</div>;
+  if (isLoading || (profilesLoading && !currentProfile)) {
+    return (
+      <DashboardLayout userType="patient">
+        <div className="flex h-[60vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <p className="text-muted-foreground animate-pulse">Loading profile data...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // If we finished loading but still have no profile, something is wrong
+  if (!currentProfile && !profilesLoading) {
+    return (
+      <DashboardLayout userType="patient">
+        <Card className="border-destructive/20 bg-destructive/5">
+          <CardContent className="pt-6 text-center">
+            <h3 className="text-lg font-semibold text-destructive">Profile Not Found</h3>
+            <p className="text-muted-foreground mb-4">We couldn't load your patient profile. Please try logging in again.</p>
+            <Button onClick={() => navigate("/login")}>Return to Login</Button>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
   }
 
   const handleSaveChanges = async () => {
