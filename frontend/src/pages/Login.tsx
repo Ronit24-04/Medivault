@@ -144,8 +144,8 @@ export default function Login() {
         navigate("/patient/dashboard");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Login failed";
-      toast.error(message);
+      // Error is already handled by the mutation's onError callback in useLogin hook
+      console.error("Login failed:", error);
     }
   };
 

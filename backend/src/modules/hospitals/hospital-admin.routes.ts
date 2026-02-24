@@ -12,6 +12,7 @@ router.get('/shared-records', hospitalAdminController.getSharedRecords.bind(hosp
 router.get('/shared-records/:shareId/files', hospitalAdminController.getSharedRecordFiles.bind(hospitalAdminController));
 router.post('/shared-records/:shareId/accept', hospitalAdminController.acceptShare.bind(hospitalAdminController));
 router.post('/shared-records/:shareId/reject', hospitalAdminController.rejectShare.bind(hospitalAdminController));
+router.post('/shared-records/:shareId/status', hospitalAdminController.updateSharedRecordStatus.bind(hospitalAdminController));
 router.get('/alerts', hospitalAdminController.getAlerts.bind(hospitalAdminController));
 router.post('/alerts/:alertId/acknowledge', hospitalAdminController.acknowledgeAlert.bind(hospitalAdminController));
 
