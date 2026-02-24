@@ -55,8 +55,10 @@ export class AuthService {
         // Generate verification token (in production, store this in DB)
         const verificationToken = generateRandomToken();
 
-        // Send verification email
-        await sendVerificationEmail(admin.email, verificationToken);
+        // Send verification email in the background (don't await to avoid timeouts)
+        sendVerificationEmail(admin.email, verificationToken).catch((err) => {
+            console.error('Background verification email failed:', err);
+        });
 
         // If user_type is patient and fullName provided, auto-create primary Patient record
         if (data.userType === 'patient' && data.fullName) {
@@ -186,8 +188,10 @@ export class AuthService {
         // Generate reset token (in production, store this in DB with expiration)
         const resetToken = generateRandomToken();
 
-        // Send reset email
-        await sendPasswordResetEmail(email, resetToken);
+        // Send reset email in the background (don't await to avoid timeouts)
+        sendPasswordResetEmail(email, resetToken).catch((err) => {
+            console.error('Background password reset email failed:', err);
+        });
 
         return {
             message: 'If the email exists, a password reset link has been sent',
