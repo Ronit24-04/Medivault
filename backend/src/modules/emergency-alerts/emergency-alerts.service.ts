@@ -57,14 +57,20 @@ export class EmergencyAlertsService {
             location?.latitude === undefined ||
             location?.longitude === undefined
         ) {
-            return null;
+            // No location provided — fall back to any registered webapp hospital
+            const anyHospital = await prisma.hospital.findFirst({
+                where: { admin_id: { not: 0 } },
+                select: { hospital_id: true },
+                orderBy: { created_at: 'desc' },
+            });
+            return anyHospital?.hospital_id ?? null;
         }
 
+        // Find any webapp-registered hospital (has admin_id) with valid coordinates
         const hospitals = await prisma.hospital.findMany({
             where: {
                 latitude: { not: null },
                 longitude: { not: null },
-                is_verified: true,
             },
             select: {
                 hospital_id: true,
@@ -74,7 +80,12 @@ export class EmergencyAlertsService {
         });
 
         if (!hospitals.length) {
-            return null;
+            // Fallback: return any hospital at all
+            const anyHospital = await prisma.hospital.findFirst({
+                select: { hospital_id: true },
+                orderBy: { created_at: 'desc' },
+            });
+            return anyHospital?.hospital_id ?? null;
         }
 
         let nearestHospitalId: number | null = null;
@@ -102,16 +113,13 @@ export class EmergencyAlertsService {
     }
 
     private async dispatchEmergencySms(patientId: number, location?: EmergencyLocation) {
+        // Fetch emergency contacts — but do NOT hard-fail if none exist
         const contacts = await prisma.emergencyContact.findMany({
             where: {
                 patient_id: patientId,
                 is_active: true,
             },
         });
-
-        if (!contacts.length) {
-            throw new AppError(404, 'No active emergency contacts found');
-        }
 
         const accountSid = process.env.TWILIO_ACCOUNT_SID;
         const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -125,6 +133,7 @@ export class EmergencyAlertsService {
             authToken.includes('your_twilio_auth_token') ||
             fromPhoneNumber.includes('XXXXXXXX');
 
+        // Find the nearest registered hospital
         const nearestHospitalId = await this.getNearestHospitalId(location);
         let hospitalDetails = null;
         if (nearestHospitalId) {
@@ -135,7 +144,7 @@ export class EmergencyAlertsService {
                     address: true,
                     phone_number: true,
                     city: true,
-                    state: true
+                    state: true,
                 }
             });
             if (h) {
@@ -144,7 +153,7 @@ export class EmergencyAlertsService {
                     address: h.address,
                     phone: h.phone_number,
                     city: h.city,
-                    state: h.state
+                    state: h.state,
                 };
             }
         }
@@ -155,7 +164,7 @@ export class EmergencyAlertsService {
                 full_name: true,
                 blood_type: true,
                 allergies: true,
-                chronic_conditions: true
+                chronic_conditions: true,
             }
         });
 
@@ -165,6 +174,7 @@ export class EmergencyAlertsService {
             patient.chronic_conditions ? `Conditions: ${patient.chronic_conditions}` : null
         ].filter(Boolean).join(' | ') : null;
 
+        // Always save the alert to the DB regardless of contacts
         const alert = await prisma.emergencyAlert.create({
             data: {
                 patient_id: patientId,
@@ -186,14 +196,19 @@ export class EmergencyAlertsService {
                         full_name: true,
                         blood_type: true,
                         allergies: true,
-                        chronic_conditions: true
+                        chronic_conditions: true,
                     }
                 }
             }
         });
 
-        if (hasPlaceholderConfig) {
-            console.warn('Emergency SMS skipped: Twilio is not configured');
+        // If Twilio is not configured or contacts don't exist, still succeed
+        if (hasPlaceholderConfig || !contacts.length) {
+            if (!contacts.length) {
+                console.warn('No active emergency contacts — alert saved to hospital only.');
+            } else {
+                console.warn('Emergency SMS skipped: Twilio is not configured');
+            }
             return { ...alert, hospital_details: hospitalDetails };
         }
 
@@ -218,7 +233,9 @@ export class EmergencyAlertsService {
             }>;
 
         if (!recipients.length) {
-            throw new AppError(400, 'No valid emergency contact phone numbers found');
+            // No valid phone numbers — still succeed, just no SMS sent
+            console.warn('No valid emergency contact phone numbers found — skipping SMS.');
+            return { ...alert, hospital_details: hospitalDetails };
         }
 
         const results = await Promise.allSettled(
