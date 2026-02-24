@@ -78,7 +78,7 @@ export default function Login() {
       });
 
       // Play sound
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/1007/1007-preview.mp3");
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
       audio.play().catch(e => console.warn("Failed to play alert sound:", e));
 
       const effectiveEmail = emergencyEmail || localStorage.getItem("emergencyEmail");
