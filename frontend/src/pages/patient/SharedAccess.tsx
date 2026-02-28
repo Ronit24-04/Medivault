@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical } from "lucide-react";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
-import { showSuccess } from "@/lib/toast";
+import { toast } from "sonner";
 import { usePatientId } from "@/hooks/usePatientId";
 import { useRecords } from "@/hooks/useRecords";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -460,7 +460,7 @@ export default function SharedAccess() {
     if (selectedShare) {
       navigator.clipboard.writeText(generateShareUrl(selectedShare.share_id));
       setCopied(true);
-      showSuccess("Link copied to clipboard!");
+      toast.success("Link copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
     }
   };
