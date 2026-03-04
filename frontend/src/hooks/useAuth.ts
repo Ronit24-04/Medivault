@@ -106,3 +106,16 @@ export const useLogout = () => {
         toast.success('Logged out successfully');
     }, [queryClient]);
 };
+
+// Verify email address from token in link
+export const useVerifyEmail = () => {
+    return useMutation({
+        mutationFn: (token: string) => authService.verifyEmail(token),
+        onSuccess: () => {
+            toast.success('Email verified successfully! You can now log in.');
+        },
+        onError: (error: Error) => {
+            toast.error(error.message || 'Email verification failed.');
+        },
+    });
+};

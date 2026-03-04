@@ -286,6 +286,37 @@ export class AuthController {
             next(error);
         }
     }
+
+    /**
+     * @swagger
+     * /api/auth/verify-email:
+     *   get:
+     *     tags: [Authentication]
+     *     summary: Verify email address using a token from the verification email
+     *     parameters:
+     *       - in: query
+     *         name: token
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Email verified successfully
+     *       400:
+     *         description: Invalid or expired token
+     */
+    async verifyEmail(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const { token } = req.query as { token: string };
+            const result = await authService.verifyEmail(token);
+            res.status(200).json({
+                success: true,
+                message: result.message,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export const authController = new AuthController();

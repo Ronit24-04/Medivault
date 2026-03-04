@@ -105,4 +105,13 @@ export const authService = {
         const userStr = localStorage.getItem('user');
         return userStr ? JSON.parse(userStr) : null;
     },
+
+    // Verify email using token from the verification email link
+    async verifyEmail(token: string): Promise<void> {
+        try {
+            await apiClient.get(`/auth/verify-email?token=${encodeURIComponent(token)}`);
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
 };

@@ -33,7 +33,11 @@ export class AuthService {
         // Hash password
         const passwordHash = await hashPassword(data.password);
 
-        // Create admin
+        // Generate verification token and set 24-hour expiry
+        const verificationToken = generateRandomToken();
+        const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        // Create admin with token stored in DB
         const admin = await prisma.admin.create({
             data: {
                 email: data.email,
@@ -42,6 +46,8 @@ export class AuthService {
                 user_type: data.userType as admin_user_type,
                 account_status: 'active' as admin_account_status,
                 email_verified: false,
+                verification_token: verificationToken,
+                verification_token_expires: verificationTokenExpires,
             },
             select: {
                 admin_id: true,
@@ -51,9 +57,6 @@ export class AuthService {
                 created_at: true,
             },
         });
-
-        // Generate verification token (in production, store this in DB)
-        const verificationToken = generateRandomToken();
 
         // Send verification email in the background (don't await to avoid timeouts)
         sendVerificationEmail(admin.email, verificationToken).catch((err) => {
@@ -120,6 +123,11 @@ export class AuthService {
 
         if (!isPasswordValid) {
             throw new AppError(401, 'Invalid email or password');
+        }
+
+        // Block login if email has not been verified yet
+        if (!admin.email_verified) {
+            throw new AppError(403, 'Please verify your email before logging in. Check your inbox for the verification link.');
         }
 
         // Update last login
@@ -204,6 +212,34 @@ export class AuthService {
         return {
             message: 'Password reset successful',
         };
+    }
+
+    async verifyEmail(token: string) {
+        // Find the admin with this exact token
+        const admin = await prisma.admin.findFirst({
+            where: { verification_token: token },
+        });
+
+        if (!admin) {
+            throw new AppError(400, 'Invalid or expired verification link. Please register again or request a new link.');
+        }
+
+        // Check token has not expired
+        if (!admin.verification_token_expires || admin.verification_token_expires < new Date()) {
+            throw new AppError(400, 'Your verification link has expired. Please register again or contact support.');
+        }
+
+        // Mark as verified and clear the token
+        await prisma.admin.update({
+            where: { admin_id: admin.admin_id },
+            data: {
+                email_verified: true,
+                verification_token: null,
+                verification_token_expires: null,
+            },
+        });
+
+        return { message: 'Email verified successfully! You can now log in.' };
     }
 
     async setupEmergencyPin(_adminId: number, _pin: string): Promise<{ message: string }> {

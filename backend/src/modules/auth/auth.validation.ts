@@ -67,3 +67,9 @@ export const verifyEmergencyPinSchema = z.object({
         pin: z.string().length(6, 'PIN must be exactly 6 digits'),
     }),
 });
+
+export const verifyEmailSchema = z.object({
+    query: z.object({
+        token: z.string().min(1, 'Verification token is required'),
+    }),
+});

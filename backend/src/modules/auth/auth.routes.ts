@@ -11,6 +11,7 @@ import {
     resetPasswordSchema,
     setupEmergencyPinSchema,
     verifyEmergencyPinSchema,
+    verifyEmailSchema,
 } from './auth.validation';
 
 const router = Router();
@@ -21,6 +22,7 @@ router.post('/login', authLimiter, validate(loginSchema), authController.login.b
 router.post('/refresh', validate(refreshTokenSchema), authController.refreshToken.bind(authController));
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword.bind(authController));
 router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword.bind(authController));
+router.get('/verify-email', validate(verifyEmailSchema), authController.verifyEmail.bind(authController));
 
 // Emergency PIN (public but rate limited)
 router.post('/verify-emergency-pin', emergencyPinLimiter, validate(verifyEmergencyPinSchema), authController.verifyEmergencyPin.bind(authController));

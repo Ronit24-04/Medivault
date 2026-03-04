@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, Loader2, MailCheck } from "lucide-react";
 import { MediVaultLogoIcon } from "@/components/MediVaultLogo";
 import { useRegister } from "@/hooks/useAuth";
 
@@ -14,6 +14,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [userType, setUserType] = useState<"patient" | "hospital">("patient");
   const [agreed, setAgreed] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
   // Form fields
   const [email, setEmail] = useState("");
@@ -45,15 +46,55 @@ export default function Register() {
         fullName: userType === 'patient' ? fullName : undefined,
       });
 
-      // Redirect to login after successful registration
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
+      // Show the "check inbox" confirmation screen instead of redirecting
+      setRegisteredEmail(email);
     } catch (error) {
       // Error is already handled by the mutation's onError
       console.error("Registration failed:", error);
     }
   };
+
+  // ── Check-your-inbox confirmation screen ──────────────────────────────────
+  if (registeredEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-md text-center animate-fade-in space-y-6">
+          <Link to="/" className="inline-flex items-center gap-2.5 mb-2 justify-center">
+            <MediVaultLogoIcon size={40} />
+            <span className="text-2xl font-semibold tracking-tight">mediVault</span>
+          </Link>
+
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              <MailCheck className="w-10 h-10 text-primary" />
+            </div>
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-bold mb-2">Check your inbox!</h1>
+            <p className="text-muted-foreground">
+              We've sent a verification link to{" "}
+              <span className="font-semibold text-foreground">{registeredEmail}</span>.
+              Click the link in the email to activate your account.
+            </p>
+          </div>
+
+          <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground text-left space-y-1">
+            <p>📧 The email might take a minute or two to arrive.</p>
+            <p>📁 Check your <strong>Spam</strong> or <strong>Junk</strong> folder if you don't see it.</p>
+            <p>⏰ The link expires in <strong>24 hours</strong>.</p>
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            Already verified?{" "}
+            <Link to="/login" className="text-primary hover:underline font-medium">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
