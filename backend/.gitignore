@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json — keep this tracked for reproducible Render builds
 yarn.lock
 
 # Environment variables
@@ -38,5 +38,5 @@ temp/
 coverage/
 .nyc_output/
 
-# Prisma
-prisma/migrations/
+# Prisma — keep migrations/ tracked so Render can run prisma migrate deploy
+# prisma/migrations/
