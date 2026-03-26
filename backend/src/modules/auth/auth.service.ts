@@ -193,11 +193,23 @@ export class AuthService {
             };
         }
 
-        // Generate reset token (in production, store this in DB with expiration)
-        const resetToken = generateRandomToken();
+        // Generate a reset token and store it with a 1-hour expiry.
+        // Prefix with "reset:" so it cannot be confused with an email
+        // verification token stored in the same column.
+        const rawToken = generateRandomToken();
+        const storedToken = `reset:${rawToken}`;
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-        // Send reset email in the background (don't await to avoid timeouts)
-        sendPasswordResetEmail(email, resetToken).catch((err) => {
+        await prisma.admin.update({
+            where: { admin_id: admin.admin_id },
+            data: {
+                verification_token: storedToken,
+                verification_token_expires: expiresAt,
+            },
+        });
+
+        // Send email with the raw token (no prefix) in the URL
+        sendPasswordResetEmail(email, rawToken).catch((err) => {
             console.error('Background password reset email failed:', err);
         });
 
@@ -206,12 +218,42 @@ export class AuthService {
         };
     }
 
-    async resetPassword(_token: string, _newPassword: string) {
-        // In production, verify token from database and hash the new password
-        // This is a stub implementation
-        return {
-            message: 'Password reset successful',
-        };
+    async resetPassword(token: string, newPassword: string) {
+        // The stored token is prefixed with "reset:" to distinguish it from
+        // email verification tokens in the same column.
+        const storedToken = `reset:${token}`;
+
+        const admin = await prisma.admin.findFirst({
+            where: { verification_token: storedToken },
+        });
+
+        if (!admin) {
+            throw new AppError(400, 'Invalid or expired password reset link. Please request a new one.');
+        }
+
+        // Check expiry
+        if (!admin.verification_token_expires || admin.verification_token_expires < new Date()) {
+            // Clear the expired token
+            await prisma.admin.update({
+                where: { admin_id: admin.admin_id },
+                data: { verification_token: null, verification_token_expires: null },
+            });
+            throw new AppError(400, 'Password reset link has expired. Please request a new one.');
+        }
+
+        // Hash the new password and save, then clear the reset token
+        const newPasswordHash = await hashPassword(newPassword);
+
+        await prisma.admin.update({
+            where: { admin_id: admin.admin_id },
+            data: {
+                password_hash: newPasswordHash,
+                verification_token: null,
+                verification_token_expires: null,
+            },
+        });
+
+        return { message: 'Password reset successful' };
     }
 
     async verifyEmail(token: string) {
