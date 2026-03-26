@@ -75,7 +75,7 @@ export class RecordsService {
         const where: any = { patient_id: patientId };
 
         if (filters.recordType) {
-            where.record_type = filters.recordType;
+            where.category = filters.recordType;
         }
 
         if (filters.startDate || filters.endDate) {
@@ -89,16 +89,15 @@ export class RecordsService {
         }
 
         if (filters.doctorName) {
-            where.doctor_name = { contains: filters.doctorName };
+            where.physician_name = { contains: filters.doctorName };
         }
 
         if (filters.hospitalName) {
-            where.hospital_name = { contains: filters.hospitalName };
+            where.facility_name = { contains: filters.hospitalName };
         }
 
-        if (filters.medicalCondition) {
-            where.medical_condition = { contains: filters.medicalCondition };
-        }
+        // medical_condition field does not exist on MedicalRecord;
+        // filter removed to prevent silent Prisma query failures
 
         if (filters.isCritical) {
             where.is_critical = filters.isCritical === 'true';
@@ -108,8 +107,8 @@ export class RecordsService {
             where.OR = [
                 { title: { contains: filters.search } },
                 { description: { contains: filters.search } },
-                { doctor_name: { contains: filters.search } },
-                { hospital_name: { contains: filters.search } },
+                { physician_name: { contains: filters.search } },
+                { facility_name: { contains: filters.search } },
             ];
         }
 
