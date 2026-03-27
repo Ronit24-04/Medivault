@@ -26,8 +26,29 @@ app.use(
         crossOriginResourcePolicy: { policy: 'cross-origin' },
     })
 );
+const allowedOrigins = [
+    // Explicit production/staging URL from env
+    env.FRONTEND_URL,
+    // Local development
+    'http://localhost:8080',
+    'http://localhost:3000',
+    'http://localhost:5173',
+];
+
 app.use(cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. mobile apps, curl, Postman)
+        if (!origin) return callback(null, true);
+
+        // Allow any Vercel preview URL for this project (e.g. medivault-*.vercel.app)
+        const isVercelPreview = /^https:\/\/medivault[a-z0-9-]*\.vercel\.app$/.test(origin);
+
+        if (isVercelPreview || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error(`CORS: Origin ${origin} not allowed`));
+    },
     credentials: true,
 }));
 
