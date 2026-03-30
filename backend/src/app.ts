@@ -20,6 +20,10 @@ import hospitalAdminRoutes from './modules/hospitals/hospital-admin.routes';
 
 const app: Application = express();
 
+// Trust the first proxy (Render, Vercel, etc.) so express-rate-limit
+// can read the real client IP from X-Forwarded-For.
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(
     helmet({
