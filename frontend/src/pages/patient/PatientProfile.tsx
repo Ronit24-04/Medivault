@@ -23,7 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, User, Phone, MapPin, Droplets } from "lucide-react";
+import { Camera, User, Phone, MapPin, Droplets, Trash2, UserCircle2, ImagePlus } from "lucide-react";
+import {
+  DropdownMenu as CameraDropdownMenu,
+  DropdownMenuContent as CameraDropdownMenuContent,
+  DropdownMenuItem as CameraDropdownMenuItem,
+  DropdownMenuTrigger as CameraDropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000/api").replace(/\/api\/?$/, "");
@@ -160,7 +166,7 @@ export default function PatientProfile() {
           })()
           : "2000-01-01"
       );
-      setGender(currentProfile.gender || "");
+      setGender((currentProfile.gender || '').toLowerCase());
       const parsedAddress = parseAddress(currentProfile.address);
       setStreetAddress(parsedAddress.streetAddress);
       setCity(parsedAddress.city);
@@ -252,7 +258,7 @@ export default function PatientProfile() {
           longitude: longitude ? Number(longitude) : undefined,
         }),
         ...(dateOfBirth && { dateOfBirth }),
-        ...(gender && { gender: gender as "male" | "female" | "other" }),
+        ...(gender && ['male', 'female', 'other'].includes(gender) && { gender: gender as "male" | "female" | "other" }),
         ...(bloodGroup && { bloodType: bloodGroup }),
         ...(height && { height: Number(height) || undefined }),
         ...(weight && { weight: Number(weight) || undefined }),
@@ -262,8 +268,8 @@ export default function PatientProfile() {
         ...(profilePin ? { emergencyPin: profilePin } : {}),
       };
 
-      if (profilePin && !/^\d{4,6}$/.test(profilePin)) {
-        throw new Error("Profile PIN must be 4 to 6 digits.");
+      if (profilePin && !/^\d{4}$/.test(profilePin)) {
+        throw new Error("Profile PIN must be exactly 4 digits.");
       }
 
       // 1. Update main patient record
@@ -388,6 +394,28 @@ export default function PatientProfile() {
     }
   };
 
+  const handleRemoveProfileImage = async () => {
+    if (!currentProfile?.patient_id) return;
+    try {
+      setIsUploadingProfileImage(true);
+      const response = await apiClient.delete(
+        `/patients/${currentProfile.patient_id}/profile-image`
+      );
+      const updatedPatient = response.data?.data;
+      if (updatedPatient) {
+        setCurrentProfile({
+          ...currentProfile,
+          ...updatedPatient,
+        } as any);
+      }
+      toast.success("Profile picture removed");
+    } catch (error) {
+      toast.error("Failed to remove profile picture");
+    } finally {
+      setIsUploadingProfileImage(false);
+    }
+  };
+
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported in this browser.");
@@ -481,28 +509,60 @@ export default function PatientProfile() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div className="relative">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage
-                    src={
-                      currentProfile?.profile_picture
-                        ? `${API_BASE_URL}${currentProfile.profile_picture}`
-                        : "/placeholder.svg"
-                    }
-                  />
-                  <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                    {user?.email?.charAt(0).toUpperCase()}
+              <div className="relative group">
+                {/* Avatar with default icon fallback */}
+                <Avatar className="h-24 w-24 ring-2 ring-border">
+                  {currentProfile?.profile_picture ? (
+                    <AvatarImage
+                      src={
+                        currentProfile.profile_picture.startsWith('http')
+                          ? currentProfile.profile_picture
+                          : `${API_BASE_URL}${currentProfile.profile_picture}`
+                      }
+                      alt="Profile picture"
+                    />
+                  ) : null}
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    <UserCircle2 className="h-14 w-14 text-primary/40" />
                   </AvatarFallback>
                 </Avatar>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
-                  onClick={() => profileImageInputRef.current?.click()}
-                  disabled={isUploadingProfileImage}
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
+
+                {/* Camera button with dropdown menu */}
+                <CameraDropdownMenu>
+                  <CameraDropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md border border-border"
+                      disabled={isUploadingProfileImage}
+                    >
+                      {isUploadingProfileImage ? (
+                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CameraDropdownMenuTrigger>
+                  <CameraDropdownMenuContent align="end" className="w-44">
+                    <CameraDropdownMenuItem
+                      onClick={() => profileImageInputRef.current?.click()}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                      {currentProfile?.profile_picture ? "Change Photo" : "Upload Photo"}
+                    </CameraDropdownMenuItem>
+                    {currentProfile?.profile_picture && (
+                      <CameraDropdownMenuItem
+                        onClick={handleRemoveProfileImage}
+                        className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove Photo
+                      </CameraDropdownMenuItem>
+                    )}
+                  </CameraDropdownMenuContent>
+                </CameraDropdownMenu>
+
                 <input
                   ref={profileImageInputRef}
                   type="file"

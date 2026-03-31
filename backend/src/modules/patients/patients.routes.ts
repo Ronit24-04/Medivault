@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { patientsController } from './patients.controller';
 import { validate } from '../../middleware/validation.middleware';
 import { authenticate } from '../../middleware/auth.middleware';
-import { uploadProfileImage } from '../../middleware/upload.middleware';
+import { uploadProfilePicture } from '../../middleware/upload.middleware';
 import {
     createPatientSchema,
     updatePatientSchema,
@@ -24,10 +24,14 @@ router.get('/:patientId', validate(patientIdSchema), patientsController.getPatie
 router.put('/:patientId', validate(updatePatientSchema), patientsController.updatePatient.bind(patientsController));
 router.put(
     '/:patientId/profile-image',
-    authenticate,
-    uploadProfileImage.single('profileImage'),
+    uploadProfilePicture.single('profileImage'),
     validate(patientIdSchema),
     patientsController.updateProfileImage.bind(patientsController)
+);
+router.delete(
+    '/:patientId/profile-image',
+    validate(patientIdSchema),
+    patientsController.removeProfileImage.bind(patientsController)
 );
 router.delete('/:patientId', validate(patientIdSchema), patientsController.deletePatient.bind(patientsController));
 router.get('/:patientId/emergency-info', validate(patientIdSchema), patientsController.getEmergencyInfo.bind(patientsController));

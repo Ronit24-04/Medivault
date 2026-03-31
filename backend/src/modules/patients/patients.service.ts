@@ -33,7 +33,7 @@ export class PatientsService {
                 full_name: data.fullName,
                 address: data.address || '',
                 date_of_birth: data.dateOfBirth ? new Date(data.dateOfBirth) : new Date('2000-01-01'),
-                gender: data.gender || 'Other',
+                gender: data.gender || 'other',
                 blood_type: data.bloodType,
                 allergies: data.allergies,
                 chronic_conditions: data.chronicConditions,
@@ -148,6 +148,28 @@ export class PatientsService {
             where: { patient_id: patientId },
             data: {
                 profile_picture: profileImagePath, // Property exists in schema and generated types
+            },
+        });
+
+        return patient;
+    }
+
+    async removeProfileImage(adminId: number, patientId: number) {
+        const existingPatient = await prisma.patient.findFirst({
+            where: {
+                patient_id: patientId,
+                admin_id: adminId,
+            },
+        });
+
+        if (!existingPatient) {
+            throw new AppError(404, 'Patient not found');
+        }
+
+        const patient = await prisma.patient.update({
+            where: { patient_id: patientId },
+            data: {
+                profile_picture: null,
             },
         });
 

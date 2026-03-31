@@ -63,11 +63,12 @@ export class PatientsController {
                 10
             );
 
-            if (!req.file?.filename) {
+            if (!req.file) {
                 throw new AppError(400, 'Profile image file is required');
             }
 
-            const profileImagePath = `/uploads/profile-images/${req.file.filename}`;
+            // req.file.path contains the full Cloudinary URL when using CloudinaryStorage
+            const profileImagePath = req.file.path;
             const patient = await patientsService.updateProfileImage(
                 req.admin!.adminId,
                 patientId,
@@ -77,6 +78,28 @@ export class PatientsController {
             res.status(200).json({
                 success: true,
                 message: 'Profile image updated successfully',
+                data: patient,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async removeProfileImage(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const patientId = parseInt(
+                Array.isArray(req.params.patientId) ? req.params.patientId[0] : req.params.patientId,
+                10
+            );
+
+            const patient = await patientsService.removeProfileImage(
+                req.admin!.adminId,
+                patientId
+            );
+
+            res.status(200).json({
+                success: true,
+                message: 'Profile image removed successfully',
                 data: patient,
             });
         } catch (error) {

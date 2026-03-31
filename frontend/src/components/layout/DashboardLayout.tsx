@@ -33,6 +33,8 @@ import { useHospitalAlerts, useHospitalProfile } from "@/hooks/useHospital";
 import { ProfileSwitcher } from "@/components/profile/ProfileSwitcher";
 import { useProfileStore } from "@/stores/useProfileStore";
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000/api").replace(/\/api\/?$/, "");
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
   userType: "patient" | "hospital";
@@ -85,6 +87,14 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
   // Fetch user profile data
   const { data: profile } = useProfile();
   const { data: patients } = usePatients();
+  const { currentProfile } = useProfileStore();
+
+  // Build profile picture URL (only for patient users)
+  const profilePictureUrl = userType === "patient" && currentProfile?.profile_picture
+    ? currentProfile.profile_picture.startsWith('http')
+      ? currentProfile.profile_picture
+      : `${API_BASE_URL}${currentProfile.profile_picture}`
+    : undefined;
 
   // Get primary patient for patient users
   const primaryPatient = patients?.find(p => p.is_primary) || patients?.[0];
@@ -176,6 +186,9 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
         <div className="border-t border-sidebar-border p-4">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
+              {profilePictureUrl && (
+                <AvatarImage src={profilePictureUrl} alt={userName} />
+              )}
               <AvatarFallback className="bg-primary/10 text-primary">
                 {userName.charAt(0)}
               </AvatarFallback>
@@ -223,6 +236,9 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2">
                   <Avatar className="h-8 w-8">
+                    {profilePictureUrl && (
+                      <AvatarImage src={profilePictureUrl} alt={userName} />
+                    )}
                     <AvatarFallback className="bg-primary/10 text-primary text-sm">
                       {userName.charAt(0)}
                     </AvatarFallback>
