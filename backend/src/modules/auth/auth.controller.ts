@@ -287,6 +287,19 @@ export class AuthController {
         }
     }
 
+    async updateProfile(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const updated = await authService.updateProfile(req.admin!.adminId, req.body);
+            res.status(200).json({
+                success: true,
+                message: 'Profile updated successfully',
+                data: updated,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     /**
      * @swagger
      * /api/auth/verify-email:

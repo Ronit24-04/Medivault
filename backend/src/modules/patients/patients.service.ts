@@ -207,6 +207,11 @@ export class PatientsService {
                 full_name: true,
                 date_of_birth: true,
                 blood_type: true,
+                allergies: true,
+                chronic_conditions: true,
+                current_medications: true,
+                height_cm: true,
+                weight_kg: true,
             },
         });
 
@@ -262,6 +267,9 @@ export class PatientsService {
                 blood_type: true,
                 allergies: true,
                 chronic_conditions: true,
+                current_medications: true,
+                height_cm: true,
+                weight_kg: true,
                 date_of_birth: true,
             }
         });

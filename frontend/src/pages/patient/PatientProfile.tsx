@@ -1,6 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useNavigate } from "react-router-dom";
-import { patientsService } from "@/api/services";
+import { patientsService, authService } from "@/api/services";
 import apiClient from "@/api/client";
 import { useProfileStore } from "@/stores/useProfileStore";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfile } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateContact,
   useDeleteContact,
@@ -92,6 +93,7 @@ const parseAddress = (rawAddress?: string): AddressParts => {
 
 export default function PatientProfile() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { currentProfile, loadProfiles, isLoading: profilesLoading, setCurrentProfile } = useProfileStore();
 
   const [firstName, setFirstName] = useState("");
@@ -138,12 +140,11 @@ export default function PatientProfile() {
     })
     : null;
 
-  // Auto-load profiles if currentProfile is missing (e.g., on direct page refresh)
+  // Always fetch fresh profile data from server on every mount so we never
+  // show data that was cached in localStorage from a previous session
   useEffect(() => {
-    if (!currentProfile && !profilesLoading) {
-      loadProfiles();
-    }
-  }, [currentProfile, loadProfiles, profilesLoading]);
+    loadProfiles();
+  }, [loadProfiles]);
   useEffect(() => {
     // FIRST priority → Zustand saved data
     if (currentProfile) {
@@ -272,13 +273,27 @@ export default function PatientProfile() {
         throw new Error("Profile PIN must be exactly 4 digits.");
       }
 
-      // 1. Update main patient record
-      await patientsService.updatePatient(
+      // 1. Save phone number to the admin record (it lives on the admin table, not patient)
+      if (phone !== undefined) {
+        const updatedAdmin = await authService.updateProfile({ phoneNumber: phone.trim() });
+        // Immediately sync the React Query ['user'] cache so the field shows
+        // without requiring a fresh login
+        queryClient.setQueryData(['user'], updatedAdmin);
+      }
+
+      // 2. Update main patient record and get the updated data back
+      const updatedPatient = await patientsService.updatePatient(
         currentProfile.patient_id,
         payload
       );
 
-      // 2. Handle emergency contacts
+      // Immediately apply the response to the store so the UI
+      // reflects the new data without waiting for loadProfiles()
+      if (updatedPatient) {
+        setCurrentProfile({ ...currentProfile, ...updatedPatient });
+      }
+
+      // 3. Handle emergency contacts
       for (let index = 0; index < MAX_EMERGENCY_CONTACTS; index += 1) {
         const formContact = emergencyContactsForm[index];
         const existingContact = patientEmergencyContacts[index];
@@ -326,7 +341,7 @@ export default function PatientProfile() {
         }
       }
 
-      // 3. Refresh everything from the server to ensure consistency
+      // 4. Refresh everything from the server to ensure consistency
       await loadProfiles();
 
       toast.success("Profile updated successfully");

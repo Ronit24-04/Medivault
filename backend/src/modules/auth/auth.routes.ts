@@ -12,6 +12,7 @@ import {
     setupEmergencyPinSchema,
     verifyEmergencyPinSchema,
     verifyEmailSchema,
+    updateProfileSchema,
 } from './auth.validation';
 
 const router = Router();
@@ -30,5 +31,6 @@ router.post('/verify-emergency-pin', emergencyPinLimiter, validate(verifyEmergen
 // Protected routes
 router.post('/setup-emergency-pin', authenticate, validate(setupEmergencyPinSchema), authController.setupEmergencyPin.bind(authController));
 router.get('/profile', authenticate, authController.getProfile.bind(authController));
+router.put('/profile', authenticate, validate(updateProfileSchema), authController.updateProfile.bind(authController));
 
 export default router;

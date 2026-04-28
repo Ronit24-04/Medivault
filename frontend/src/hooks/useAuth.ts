@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { authService, LoginRequest, RegisterRequest, AdminProfile } from '../api/services';
+import { useProfileStore } from '../stores/useProfileStore';
 import { toast } from 'sonner';
 
 // Login hook
@@ -99,12 +100,14 @@ export const useResetPassword = () => {
 // Logout
 export const useLogout = () => {
     const queryClient = useQueryClient();
+    const clearProfiles = useProfileStore((state) => state.clearProfiles);
 
     return useCallback(() => {
-        authService.logout();
-        queryClient.clear();
+        authService.logout();   // clears tokens + profile-storage from localStorage
+        clearProfiles();        // clears in-memory Zustand store
+        queryClient.clear();    // clears React Query cache
         toast.success('Logged out successfully');
-    }, [queryClient]);
+    }, [queryClient, clearProfiles]);
 };
 
 // Verify email address from token in link

@@ -73,3 +73,9 @@ export const verifyEmailSchema = z.object({
         token: z.string().min(1, 'Verification token is required'),
     }),
 });
+
+export const updateProfileSchema = z.object({
+    body: z.object({
+        phoneNumber: z.string().min(1, 'Phone number is required'),
+    }),
+});

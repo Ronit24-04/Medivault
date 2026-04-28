@@ -43,6 +43,9 @@ export const authService = {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
+        // Clear persisted Zustand profile store so stale profile data
+        // doesn't survive into the next session
+        localStorage.removeItem('profile-storage');
     },
 
     // Get current user profile
@@ -90,6 +93,19 @@ export const authService = {
     async resetPassword(token: string, newPassword: string): Promise<void> {
         try {
             await apiClient.post('/auth/reset-password', { token, newPassword });
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    },
+
+    // Update admin profile (e.g. phone number)
+    async updateProfile(data: { phoneNumber?: string }): Promise<AdminProfile> {
+        try {
+            const response = await apiClient.put<ApiResponse<AdminProfile>>('/auth/profile', data);
+            // Keep localStorage in sync so getStoredUser() stays accurate
+            const updated = response.data.data!;
+            localStorage.setItem('user', JSON.stringify(updated));
+            return updated;
         } catch (error) {
             throw new Error(handleApiError(error));
         }

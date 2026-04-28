@@ -317,6 +317,27 @@ export class AuthService {
 
         return admin;
     }
+
+    async updateProfile(adminId: number, data: { phoneNumber?: string }) {
+        const admin = await prisma.admin.update({
+            where: { admin_id: adminId },
+            data: {
+                ...(data.phoneNumber !== undefined && { phone_number: data.phoneNumber }),
+            },
+            select: {
+                admin_id: true,
+                email: true,
+                phone_number: true,
+                user_type: true,
+                email_verified: true,
+                account_status: true,
+                created_at: true,
+                last_login: true,
+            },
+        });
+
+        return admin;
+    }
 }
 
 export const authService = new AuthService();
